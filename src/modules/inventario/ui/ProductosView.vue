@@ -92,7 +92,7 @@
           <div class="form-group"><label>Precio Compra</label>
             <input v-model.number="formProducto.precio_compra" type="number" class="input" min="0" step="0.01" />
           </div>
-          <div class="form-group"><label>Precio Venta *</label>
+          <div class="form-group"><label>Precio Venta (Inc. IVA) *</label>
             <input v-model.number="formProducto.precio_venta" type="number" class="input" min="0" step="0.01" />
           </div>
           <div class="form-group"><label>Stock Inicial</label>

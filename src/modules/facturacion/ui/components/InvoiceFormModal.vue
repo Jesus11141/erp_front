@@ -82,7 +82,7 @@
           <tr>
             <th style="min-width:200px">Producto / Descripción *</th>
             <th style="width:70px">Cant.</th>
-            <th style="width:100px">P. Unit.</th>
+            <th style="width:100px">P. Unit. (Inc. IVA)</th>
             <th style="width:70px">Desc.%</th>
             <th style="width:80px">IVA%</th>
             <th style="width:90px">Subtotal</th>
@@ -352,7 +352,9 @@ function cerrarModal() {
 }
 
 const subtotalItem = (item) => {
-  const base = (item.quantity || 0) * (item.unit_price || 0)
+  const factorIva = 1 + (parseFloat(item.tarifa_iva || '0') / 100)
+  const unitPriceSinIva = (item.unit_price || 0) / factorIva
+  const base = (item.quantity || 0) * unitPriceSinIva
   return base - (base * ((item.discount || 0) / 100))
 }
 
@@ -389,15 +391,18 @@ function guardar() {
     return
   }
   const itemsValidos = form.value.items.filter(i => i.description.trim() && i.quantity > 0 && i.unit_price >= 0)
-      .map(({ _sugerencias, ...i }) => ({
-        description: i.description,
-        quantity: i.quantity,
-        unit_price: i.unit_price,
-        discount: i.discount,
-        vat_rate: i.tarifa_iva,
-        main_code: i.codigo_principal,
-        auxiliary_code: ''
-      }))
+      .map(({ _sugerencias, ...i }) => {
+        const factorIva = 1 + (parseFloat(i.tarifa_iva || '0') / 100)
+        return {
+          description: i.description,
+          quantity: i.quantity,
+          unit_price: i.unit_price / factorIva,
+          discount: i.discount,
+          vat_rate: i.tarifa_iva,
+          main_code: i.codigo_principal,
+          auxiliary_code: ''
+        }
+      })
   
   if (!itemsValidos.length) {
     errorForm.value = 'Agrega al menos un ítem con descripción y cantidad válida'

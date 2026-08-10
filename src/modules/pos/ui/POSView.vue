@@ -1075,12 +1075,12 @@ const subtotalItem = (item) => {
   return (base - (base * item.discount / 100)).toFixed(2)
 }
 
-const subtotal = computed(() =>
+const total = computed(() =>
   carrito.value.reduce((acc, i) => acc + parseFloat(subtotalItem(i)), 0).toFixed(2)
 )
 const tasaIva = computed(() => parseFloat(parametrosStore.obtener('ventas', 'iva', '15')) / 100)
-const tax = computed(() => (parseFloat(subtotal.value) * tasaIva.value).toFixed(2))
-const total = computed(() => (parseFloat(subtotal.value) + parseFloat(tax.value)).toFixed(2))
+const subtotal = computed(() => (parseFloat(total.value) / (1 + tasaIva.value)).toFixed(2))
+const tax = computed(() => (parseFloat(total.value) - parseFloat(subtotal.value)).toFixed(2))
 
 watch([metodoPago, total], ([newMetodo, newTotal]) => {
   const mName = (metodoActual.value && metodoActual.value.label) ? metodoActual.value.label.toLowerCase() : ''
@@ -1285,11 +1285,15 @@ async function cobrar() {
     else if (mName.includes('transferencia')) paymentForm = '20'
 
     const payload = {
-      items: carrito.value.map(i => ({
-        ...i,
-        codigo_principal: i.code || '',
-        tarifa_iva: i.tarifa_iva || parametrosStore.obtener('ventas', 'iva', '15')
-      })),
+      items: carrito.value.map(i => {
+        const tIva = parseFloat(i.tarifa_iva || parametrosStore.obtener('ventas', 'iva', '15')) / 100
+        return {
+          ...i,
+          unit_price: i.unit_price / (1 + tIva),
+          codigo_principal: i.code || '',
+          tarifa_iva: i.tarifa_iva || parametrosStore.obtener('ventas', 'iva', '15')
+        }
+      }),
       payment_method: metodoPago.value,
       amount_received: montoFinal,
       update_customer: updateCustomer.value,
@@ -1363,11 +1367,15 @@ async function procesarVentaFactura(modalPayload) {
       total: data.total,
       cambio: data.change,
       factura_numero: data.invoice_number || null,
-      items: payload.items.map(i => ({
-        description: i.description,
-        quantity: i.quantity,
-        subtotal: i.quantity * i.unit_price - (i.quantity * i.unit_price * ((i.discount||0)/100))
-      })),
+      items: payload.items.map(i => {
+        const factor = 1 + (parseFloat(i.vat_rate || '15') / 100)
+        const unitIncIva = i.unit_price * factor
+        return {
+          description: i.description,
+          quantity: i.quantity,
+          subtotal: i.quantity * unitIncIva - (i.quantity * unitIncIva * ((i.discount||0)/100))
+        }
+      }),
     }
     carrito.value = []
     productosEnEspera.value = []
