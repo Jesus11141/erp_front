@@ -16,6 +16,25 @@ export function useAlert() {
     })
   }
 
+  /**
+   * showToast(message, type)
+   * Toast ligero que se cierra automáticamente tras 2.5s.
+   * Compatible con la firma: useAlert().showToast('msg', 'success')
+   */
+  function showToast(message, type = 'success') {
+    const title = type === 'error' ? 'Error'
+      : type === 'warning' ? 'Atención'
+      : type === 'success' ? 'Éxito'
+      : 'Aviso'
+    return new Promise((resolve) => {
+      resolvePromise = resolve
+      alertState.value = { type, title, message, autoClose: true }
+      setTimeout(() => {
+        closeAlert(true)
+      }, 2500)
+    })
+  }
+
   function closeAlert(result = false) {
     alertState.value = null
     if (resolvePromise) {
@@ -24,5 +43,5 @@ export function useAlert() {
     }
   }
 
-  return { alertState, showAlert, closeAlert }
+  return { alertState, showAlert, showToast, closeAlert }
 }

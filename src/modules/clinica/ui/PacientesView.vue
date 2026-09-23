@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+    <div class="page-header">
       <h1 class="page-title" style="margin:0">Pacientes</h1>
       <button class="btn btn-primary" @click="abrirForm()">+ Nuevo Paciente</button>
     </div>
@@ -36,7 +36,7 @@
 
     <!-- Modal nuevo/editar patient -->
     <div v-if="mostrarForm" class="modal-overlay">
-      <div class="modal" style="max-width:640px">
+      <div class="modal">
         <h3 style="margin-bottom:1.25rem">{{ editando ? 'Editar Paciente' : 'Nuevo Paciente' }}</h3>
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
           <div class="form-group">
@@ -98,7 +98,7 @@
 
     <!-- Modal historial -->
     <div v-if="pacienteHistorial" class="modal-overlay">
-      <div class="modal" style="max-width:700px">
+      <div class="modal">
         <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1.25rem;">
           <div>
             <h3>{{ pacienteHistorial.name }}</h3>

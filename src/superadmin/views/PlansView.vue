@@ -1,9 +1,13 @@
 <template>
   <div>
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+    <div class="page-header">
       <div>
-        <h1 class="page-title">Planes SaaS</h1>
-        <p style="color:var(--text-muted); font-size:0.875rem;">Administra los planes de suscripción disponibles para tus clientes.</p>
+        <div class="page-header">
+          <div>
+          <h1 class="page-title">Planes SaaS</h1>
+          <p style="color:var(--text-muted); font-size:0.875rem;">Administra los planes de suscripción disponibles para tus clientes.</p>
+          </div>
+        </div>
       </div>
       <router-link to="/superadmin/nuevo-plan" class="btn btn-primary">
         ✨ Nuevo Plan

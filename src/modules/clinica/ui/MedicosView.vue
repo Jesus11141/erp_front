@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+    <div class="page-header">
       <h1 class="page-title" style="margin:0">Médicos</h1>
       <button class="btn btn-primary" @click="mostrarForm = true">+ Nuevo Médico</button>
     </div>

@@ -1,6 +1,10 @@
 <template>
   <div>
-    <h1 class="page-title">Dashboard Global</h1>
+    <div class="page-header">
+      <div>
+      <h1 class="page-title">Dashboard Global</h1>
+      </div>
+    </div>
 
     <div v-if="cargando" class="spinner" style="margin:2rem auto;"></div>
 

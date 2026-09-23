@@ -1,11 +1,15 @@
 <template>
   <div>
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+    <div class="page-header">
       <div>
-        <h1 class="page-title" style="margin:0;">👥 Gestión de Usuarios</h1>
-        <p style="color:var(--text-muted); font-size:0.9rem; margin-top:0.25rem;">
-          Administra las accounts de tus trabajadores, asigna sus roles y gestiona sus accesos.
-        </p>
+        <div class="page-header">
+          <div>
+          <h1 class="page-title" style="margin:0;">👥 Gestión de Usuarios</h1>
+          <p style="color:var(--text-muted); font-size:0.9rem; margin-top:0.25rem;">
+            Administra las accounts de tus trabajadores, asigna sus roles y gestiona sus accesos.
+          </p>
+          </div>
+        </div>
       </div>
       <button class="btn btn-primary" @click="abrirCrearModal">
         ➕ Nuevo Usuario
@@ -26,11 +30,7 @@
         </div>
         <select v-model="filtroRol" class="input" style="max-width:180px;">
           <option value="">Todos los roles</option>
-          <option value="admin">Administrador</option>
-          <option value="vendedor">Vendedor / Cajero</option>
-          <option value="contador">Contador</option>
-          <option value="almacenista">Almacenista</option>
-          <option value="rrhh">Recursos Humanos</option>
+          <option v-for="r in rolesDisponibles" :key="r.id" :value="r.id">{{ r.name }}</option>
         </select>
         <select v-model="filtroEstado" class="input" style="max-width:180px;">
           <option value="">Todos los estados</option>
@@ -63,8 +63,8 @@
             <td style="padding:1rem; font-weight:600;">{{ u.name }}</td>
             <td style="padding:1rem; color:var(--text-muted);">{{ u.email }}</td>
             <td style="padding:1rem;">
-              <span :class="['badge', getBadgeClass(u.rol)]">
-                {{ getRolLabel(u.rol) }}
+              <span class="badge badge-primary">
+                {{ getRolName(u.custom_role_id) || 'Rol Personalizado' }}
               </span>
             </td>
             <td style="padding:1rem;">
@@ -93,7 +93,7 @@
 
     <!-- MODAL: CREAR USUARIO -->
     <div v-if="mostrarCrearModal" class="modal-overlay">
-      <div class="modal" style="max-width:450px;">
+      <div class="modal">
         <h3 style="margin-bottom:1.25rem;">➕ Registrar Nuevo Usuario</h3>
         <form @submit.prevent="crearUsuario">
           <div class="form-group">
@@ -108,15 +108,21 @@
             <label>Contraseña Inicial *</label>
             <input v-model="formCrear.password" type="password" class="input" placeholder="Mínimo 6 caracteres" autocomplete="new-password" required />
           </div>
-          <div class="form-group">
-            <label>Rol Asignado *</label>
-            <select v-model="formCrear.rol" class="input" required>
-              <option value="vendedor">Vendedor / Cajero (Solo POS)</option>
-              <option value="admin">Administrador (Control total)</option>
-              <option value="contador">Contador (Facturación y Reportes)</option>
-              <option value="almacenista">Almacenista (Inventarios)</option>
-              <option value="rrhh">Recursos Humanos (Nóminas y Personal)</option>
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <label>Rol Base (Opcional)</label>
+            <select v-model="formCrear.custom_role_id" class="input">
+              <option :value="null">-- Ninguno (Permisos manuales) --</option>
+              <option v-for="rol in rolesDisponibles" :key="rol.id" :value="rol.id">
+                {{ rol.name }}
+              </option>
             </select>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">
+              Asignar un rol base aplicará automáticamente sus permisos.
+            </p>
+          </div>
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <label>Accesos Permitidos *</label>
+            <PermissionsSelector v-model="formCrear.permissions" :modulos="modulosContratados" />
           </div>
           <div style="display:flex; gap:0.5rem; justify-content:flex-end; margin-top:1.5rem;">
             <button type="button" class="btn btn-outline" @click="mostrarCrearModal = false">Cancelar</button>
@@ -130,7 +136,7 @@
 
     <!-- MODAL: EDITAR USUARIO -->
     <div v-if="mostrarEditarModal" class="modal-overlay">
-      <div class="modal" style="max-width:450px;">
+      <div class="modal">
         <h3 style="margin-bottom:1.25rem;">⚙️ Editar Usuario</h3>
         <form @submit.prevent="guardarEdicion">
           <div class="form-group">
@@ -145,15 +151,21 @@
             <label>Cambiar Contraseña (Dejar en blanco para conservar la actual)</label>
             <input v-model="formEditar.password" type="password" class="input" placeholder="Nueva contraseña (mínimo 6 caracteres)" autocomplete="new-password" />
           </div>
-          <div class="form-group">
-            <label>Rol Asignado *</label>
-            <select v-model="formEditar.rol" class="input" required>
-              <option value="vendedor">Vendedor / Cajero (Solo POS)</option>
-              <option value="admin">Administrador (Control total)</option>
-              <option value="contador">Contador (Facturación y Reportes)</option>
-              <option value="almacenista">Almacenista (Inventarios)</option>
-              <option value="rrhh">Recursos Humanos (Nóminas y Personal)</option>
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <label>Rol Base (Opcional)</label>
+            <select v-model="formEditar.custom_role_id" class="input">
+              <option :value="null">-- Ninguno (Permisos manuales) --</option>
+              <option v-for="rol in rolesDisponibles" :key="rol.id" :value="rol.id">
+                {{ rol.name }}
+              </option>
             </select>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">
+              Asignar un rol base aplicará automáticamente sus permisos.
+            </p>
+          </div>
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <label>Accesos Permitidos *</label>
+            <PermissionsSelector v-model="formEditar.permissions" :modulos="modulosContratados" />
           </div>
           <div class="form-group" style="margin-top:1rem;">
             <label class="toggle" style="display:inline-flex; align-items:center; gap:0.5rem; cursor:pointer;">
@@ -177,7 +189,7 @@
 
     <!-- MODAL: CAMBIAR CONTRASEÑA -->
     <div v-if="mostrarPasswordModal" class="modal-overlay">
-      <div class="modal" style="max-width:450px;">
+      <div class="modal">
         <h3 style="margin-bottom:1.25rem;">🔑 Restablecer Contraseña</h3>
         <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1rem;">
           Establece una nueva contraseña de acceso para <strong>{{ usuarioSeleccionado?.name }}</strong>.
@@ -204,11 +216,19 @@ import { ref, computed, onMounted } from 'vue'
 import api from '../shared/api'
 import { useAlert } from '../composables/useAlert'
 import { useAuthStore } from '../stores/auth'
+import { useTenantStore } from '../stores/tenant'
+import PermissionsSelector from '../components/PermissionsSelector.vue'
 
 const { showAlert } = useAlert()
 const authStore = useAuthStore()
+const tenantStore = useTenantStore()
 
 const usuarios = ref([])
+const modulosContratados = computed(() => {
+  return tenantStore.tenant?.modules || []
+})
+
+const rolesDisponibles = ref([])
 const cargando = ref(false)
 const guardando = ref(false)
 
@@ -223,14 +243,14 @@ const mostrarPasswordModal = ref(false)
 const usuarioSeleccionado = ref(null)
 const nuevaPassword = ref('')
 
-const formCrear = ref({ name: '', email: '', password: '', rol: 'vendedor' })
-const formEditar = ref({ id: null, name: '', email: '', password: '', rol: 'vendedor', is_active: true })
+const formCrear = ref({ name: '', email: '', password: '', role: 'custom', custom_role_id: null, permissions: [] })
+const formEditar = ref({ id: null, name: '', email: '', password: '', is_active: true, role: 'custom', custom_role_id: null, permissions: [] })
 
 const usuariosFiltrados = computed(() => {
   return usuarios.value.filter(u => {
     const matchBusqueda = u.name.toLowerCase().includes(busqueda.value.toLowerCase()) ||
                           u.email.toLowerCase().includes(busqueda.value.toLowerCase())
-    const matchRol = !filtroRol.value || u.rol === filtroRol.value
+    const matchRol = !filtroRol.value || u.custom_role_id === filtroRol.value
     const matchEstado = !filtroEstado.value ||
                         (filtroEstado.value === 'is_active' && u.is_active) ||
                         (filtroEstado.value === 'inactivo' && !u.is_active)
@@ -239,26 +259,35 @@ const usuariosFiltrados = computed(() => {
 })
 
 async function cargarUsuarios() {
-  if (authStore.rol !== 'admin' && authStore.rol !== 'superadmin') {
+  if (authStore.rol !== 'admin' && authStore.rol !== 'superadmin' && !authStore.usuario?.permissions?.includes('*') && !authStore.usuario?.permissions?.includes('admin.*')) {
     return
   }
   cargando.value = true
   try {
-    const { data } = await api.get('/auth/usuarios/')
-    usuarios.value = data
+    const [resUsuarios, resRoles] = await Promise.all([
+      api.get('/auth/usuarios/'),
+      api.get('/auth/roles/')
+    ])
+    usuarios.value = resUsuarios.data
+    rolesDisponibles.value = resRoles.data
   } catch (e) {
     showAlert({
       type: 'error',
       title: 'Error de carga',
-      message: 'No se pudieron obtener los usuarios del sistema.'
+      message: 'No se pudieron obtener los datos del sistema.'
     })
   } finally {
     cargando.value = false
   }
 }
 
+function getRolName(custom_role_id) {
+  const role = rolesDisponibles.value.find(r => r.id === custom_role_id)
+  return role ? role.name : ''
+}
+
 function abrirCrearModal() {
-  formCrear.value = { name: '', email: '', password: '', rol: 'vendedor' }
+  formCrear.value = { name: '', email: '', password: '', role: 'custom', custom_role_id: null, permissions: [] }
   mostrarCrearModal.value = true
 }
 
@@ -285,7 +314,7 @@ async function crearUsuario() {
 }
 
 function abrirEditarModal(usuario) {
-  formEditar.value = { ...usuario, password: '' }
+  formEditar.value = { ...usuario, custom_role_id: usuario.custom_role_id || null, password: '', permissions: usuario.permissions || [] }
   mostrarEditarModal.value = true
 }
 
@@ -299,8 +328,9 @@ async function guardarEdicion() {
     const payload = {
       name: formEditar.value.name,
       email: formEditar.value.email,
-      rol: formEditar.value.rol,
-      is_active: formEditar.value.is_active
+      is_active: formEditar.value.is_active,
+      custom_role_id: formEditar.value.custom_role_id,
+      permissions: formEditar.value.permissions
     }
     if (formEditar.value.password) {
       payload.password = formEditar.value.password
@@ -382,5 +412,17 @@ onMounted(() => {
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+</style>
+<style scoped>
+.checkbox-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.checkbox-container input {
+  cursor: pointer;
 }
 </style>

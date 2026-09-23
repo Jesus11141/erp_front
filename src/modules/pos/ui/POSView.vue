@@ -11,32 +11,47 @@
                 </div>
                 <div>
                     <h1 class="font-bold text-base leading-none text-slate-900 tracking-wide uppercase">{{ parametrosStore.company?.name || tenantStore.tenant?.name || 'MI EMPRESA' }} <span class="text-brand-500 font-extrabold">POS</span></h1>
-                    <span class="text-[10px] text-slate-600 tracking-wider uppercase font-semibold">{{ authStore.user?.sucursal || 'Sucursal Principal' }} • Caja {{ authStore.user?.caja_id || '01' }}</span>
+                    <span class="text-[10px] text-slate-600 tracking-wider uppercase font-semibold">
+                        <span v-if="trabajadorAsignado">
+                            {{ trabajadorAsignado.name }} • 
+                            {{ sucursales.find(s => s.id === (cajaAbierta?.register?.branch_id || cajaAbierta?.branch_id || trabajadorAsignado.sucursal_id))?.name || 'Sucursal Principal' }}
+                            <span v-if="cajaAbierta"> • {{ cajaAbierta.register?.name }}</span>
+                        </span>
+                        <span v-else>
+                            Seleccione Trabajador
+                        </span>
+                    </span>
                 </div>
             </div>
             
-            <div class="hidden md:flex items-center space-x-2 bg-white/80 border border-slate-200 px-3 py-1 rounded-full text-xs">
-                <span class="relative flex h-2 w-2">
-                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                </span>
-                <span class="text-slate-700 font-medium">SRI Emisión Directa:</span>
-                <span class="text-emerald-400 font-mono font-bold">Activo</span>
-            </div>
+
         </div>
 
         <div class="flex items-center space-x-3">
-            <button v-if="cajaAbierta" @click="mostrarMovimientosCaja = true" class="bg-slate-100 hover:bg-slate-700 border border-slate-300 text-slate-800 text-xs font-semibold px-3 py-2 rounded-lg transition-all flex items-center space-x-1.5 shadow-sm active:scale-95">
+            <button v-if="cajaAbierta && esCajero" @click="mostrarMovimientosCaja = true" class="bg-slate-100 hover:bg-slate-700 border border-slate-300 text-slate-800 text-xs font-semibold px-3 py-2 rounded-lg transition-all flex items-center space-x-1.5 shadow-sm active:scale-95">
                 <i class="fa-solid fa-money-bill-transfer text-emerald-500"></i>
                 <span>Movimientos</span>
             </button>
-            <button v-if="cajaAbierta" @click="mostrarCerrarCaja = true" class="bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-xs font-semibold px-3 py-2 rounded-lg transition-all flex items-center space-x-1.5 shadow-sm active:scale-95">
+            <button v-if="cajaAbierta && esCajero" @click="mostrarCerrarCaja = true" class="bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-xs font-semibold px-3 py-2 rounded-lg transition-all flex items-center space-x-1.5 shadow-sm active:scale-95">
                 <i class="fa-solid fa-lock"></i>
-                <span>Cerrar Turno</span>
+                <span>Cerrar Caja</span>
             </button>
-            <button v-if="!cajaAbierta" @click="mostrarAbrirCaja = true" class="bg-brand-50 hover:bg-brand-100 border border-brand-200 text-brand-700 text-xs font-semibold px-3 py-2 rounded-lg transition-all flex items-center space-x-1.5 shadow-sm active:scale-95">
-                <i class="fa-solid fa-lock-open"></i>
-                <span>Abrir Turno</span>
+            <button v-else-if="trabajadorAsignado" @click="cerrarSesionVendedor" class="bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-xs font-semibold px-3 py-2 rounded-lg transition-all flex items-center space-x-1.5 shadow-sm active:scale-95">
+                <i class="fa-solid fa-power-off"></i>
+                <span>Cerrar Sesión</span>
+            </button>
+            <button v-if="!trabajadorAsignado" @click="mostrarAbrirCaja = true" class="bg-brand-50 hover:bg-brand-100 border border-brand-200 text-brand-700 text-xs font-semibold px-3 py-2 rounded-lg transition-all flex items-center space-x-1.5 shadow-sm active:scale-95">
+                <i class="fa-solid fa-user-lock"></i>
+                <span>Asignar Trabajador</span>
+            </button>
+
+            <button v-if="cajaAbierta && esCajero" @click="abrirLista('pendientes')" class="bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-700 text-xs font-semibold px-3 py-2 rounded-lg transition-all flex items-center space-x-1.5 shadow-sm active:scale-95">
+                <i class="fa-solid fa-file-invoice"></i>
+                <span>Pre-Facturas 📝</span>
+            </button>
+            <button @click="abrirLista('cotizaciones')" class="bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 text-xs font-semibold px-3 py-2 rounded-lg transition-all flex items-center space-x-1.5 shadow-sm active:scale-95">
+                <i class="fa-solid fa-file-contract"></i>
+                <span>Cotizaciones 📄</span>
             </button>
 
             <button @click="abrirHistorial" class="bg-slate-100 hover:bg-slate-700 border border-slate-300 text-slate-800 text-xs font-semibold px-3 py-2 rounded-lg transition-all flex items-center space-x-1.5 shadow-sm active:scale-95">
@@ -44,27 +59,29 @@
                 <span>Historial</span>
             </button>
             <div class="h-6 w-px bg-slate-100 hidden sm:block"></div>
-            <div class="flex items-center space-x-2 text-xs text-slate-600 bg-white px-3 py-1.5 rounded-lg border border-slate-200">
-                <i class="fa-solid fa-user-circle text-slate-700 text-sm"></i>
-                <span class="font-medium text-slate-800">{{ authStore.user?.username || 'Usuario' }}</span>
+            <div class="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg shadow-sm">
+                <i class="fa-solid fa-user-circle text-brand-600 text-lg"></i>
+                <span class="font-medium text-slate-800 capitalize">{{ authStore.displayRole || 'Usuario' }} {{ authStore.usuario?.name || authStore.usuario?.username || '' }}</span>
             </div>
         </div>
     </header>
 
     <main class="flex-1 flex flex-col md:flex-row overflow-hidden relative">
-        <template v-if="!cajaAbierta">
+        <!-- LOCK SCREEN PARA TRABAJADOR NO ASIGNADO -->
+        <template v-if="!trabajadorAsignado">
           <div class="flex-1 flex flex-col items-center justify-center p-8 text-center bg-slate-50 z-10 w-full h-full absolute inset-0">
              <div class="text-6xl mb-4">🔒</div>
-             <h3 class="text-2xl font-bold mb-2">Ventas Desactivadas</h3>
-             <p class="text-slate-600 mb-6">Por favor, inicie su turno de caja para poder realizar ventas.</p>
-             <button class="bg-brand-500 hover:bg-brand-600 text-slate-950 font-bold px-6 py-3 rounded-xl transition-all shadow-lg shadow-brand-500/20" @click="mostrarAbrirCaja = true">
-                🖥️ Iniciar Turno / Abrir Caja
+             <h3 class="text-2xl font-bold mb-2">POS Bloqueado</h3>
+             <p class="text-slate-500 mb-6 max-w-sm">Para realizar ventas, buscar productos o usar la interfaz, necesitas iniciar sesión como trabajador autorizado.</p>
+             <button @click="mostrarAbrirCaja = true" class="bg-brand-500 hover:bg-brand-600 text-slate-950 font-black px-6 py-3 rounded-xl shadow-lg shadow-brand-500/30 transition-all flex items-center space-x-2">
+                 <i class="fa-solid fa-user-lock"></i>
+                 <span>ASIGNAR TRABAJADOR</span>
              </button>
           </div>
         </template>
         
         <!-- LEFT COLUMN: PRODUCTS -->
-        <section class="flex-1 flex flex-col bg-white border-r border-slate-200/80 min-w-0" :class="{'opacity-20 pointer-events-none': !cajaAbierta}">
+        <section class="flex-1 flex flex-col bg-white border-r border-slate-200/80 min-w-0">
             
             <div class="p-3 bg-slate-50/60 border-b border-slate-200/80 flex flex-col sm:flex-row gap-2.5 relative">
                 <div class="relative flex-1">
@@ -76,7 +93,12 @@
                         @input="onBusquedaInput"
                         @blur="handleBlurProducto"
                         @focus="busqueda.length >= 1 && (mostrarSugerenciasProducto = true)"
-                        type="text" 
+                        type="text"
+                        autocomplete="new-password"
+                        data-lpignore="true"
+                        data-1p-ignore="true"
+                        spellcheck="false"
+                        name="pos_product_search_unique"
                         placeholder="Buscar por código de barras, nombre o SKU (Presiona Enter)... [F2]" 
                         class="w-full pl-10 pr-10 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-900 placeholder-slate-500 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 font-medium transition-all"
                     >
@@ -102,7 +124,7 @@
 
                 <div class="flex items-center space-x-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
                     <button 
-                        v-for="cat in simulatedCategories" 
+                        v-for="cat in categoriasPOS" 
                         :key="cat.id"
                         @click="selectedCategory = cat.id"
                         :class="[
@@ -112,7 +134,8 @@
                             'px-3 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all'
                         ]"
                     >
-                        <i :class="['mr-1 text-[11px]', cat.icon]"></i> {{ cat.name }}
+                        <i v-if="cat.id === 'todos'" class="mr-1 text-[11px] fa-solid fa-border-all"></i>
+                        {{ cat.name }}
                     </button>
                 </div>
             </div>
@@ -165,7 +188,7 @@
         </section>
 
         <!-- RIGHT COLUMN: CURRENT CART -->
-        <section class="w-full md:w-[420px] bg-slate-50 flex flex-col h-full border-t md:border-t-0 md:border-l border-slate-200 shrink-0" :class="{'opacity-20 pointer-events-none': !cajaAbierta}">
+        <section class="w-full md:w-[420px] bg-slate-50 flex flex-col h-full border-t md:border-t-0 md:border-l border-slate-200 shrink-0">
             
             <!-- Customer Selection Section -->
             <div class="p-3 bg-white/60 border-b border-slate-200 relative">
@@ -182,26 +205,25 @@
                     </button>
                 </div>
 
-                <div v-if="clienteForm.name" class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
-                    <div class="flex justify-between items-center mb-1">
-                        <div class="text-[10px] text-slate-600 font-bold uppercase tracking-wider">Datos del Cliente</div>
-                        <div v-if="clienteForm.identification !== '9999999999999'" class="flex items-center gap-1.5">
-                            <input type="checkbox" id="updateCust" v-model="updateCustomer" class="accent-brand-500 w-3 h-3">
-                            <label for="updateCust" class="text-[10px] text-brand-400 font-bold cursor-pointer">Actualizar datos</label>
+                <div v-if="clienteForm.name" class="bg-slate-50 p-2.5 rounded-xl border border-slate-200 flex flex-col gap-1.5 shadow-sm">
+                    <div class="flex justify-between items-start">
+                        <div class="flex items-center gap-2.5 overflow-hidden">
+                            <div class="bg-brand-100 text-brand-700 w-8 h-8 rounded-full flex items-center justify-center shrink-0">
+                                <i class="fa-solid fa-user text-sm"></i>
+                            </div>
+                            <div class="truncate">
+                                <div class="text-[11px] font-bold text-slate-800 truncate uppercase" :title="clienteForm.name">{{ clienteForm.name }}</div>
+                                <div class="text-[10px] text-slate-500 flex items-center gap-1.5 font-mono">
+                                    <i class="fa-regular fa-id-card"></i> {{ clienteForm.identification || 'N/A' }}
+                                </div>
+                            </div>
                         </div>
+                        <button v-if="clienteForm.identification !== '9999999999999'" @click="mostrarModalCliente = true" class="text-brand-600 hover:text-brand-700 bg-brand-50 hover:bg-brand-100 p-1.5 rounded-lg transition-colors border border-brand-100 shrink-0" title="Editar datos del cliente">
+                            <i class="fa-solid fa-pen text-[10px]"></i>
+                        </button>
                     </div>
-                    <div class="grid grid-cols-2 gap-2">
-                        <input v-model="clienteForm.identification" type="text" placeholder="Cédula/RUC" class="bg-white border border-slate-300 rounded px-2 py-1 text-xs text-slate-900 focus:outline-none focus:border-brand-500" :disabled="clienteForm.identification === '9999999999999'" title="Cédula o RUC (Obligatorio para SRI)">
-                        <input v-model="clienteForm.name" type="text" placeholder="Razón Social" class="bg-white border border-slate-300 rounded px-2 py-1 text-xs text-slate-900 focus:outline-none focus:border-brand-500" :disabled="clienteForm.identification === '9999999999999'" title="Razón Social">
-                        <input v-model="clienteForm.email" type="email" placeholder="Correo Electrónico" class="bg-white border border-slate-300 rounded px-2 py-1 text-xs text-slate-900 focus:outline-none focus:border-brand-500" :disabled="clienteForm.identification === '9999999999999'" title="Correo Electrónico">
-                        <input v-model="clienteForm.address" type="text" placeholder="Dirección" class="bg-white border border-slate-300 rounded px-2 py-1 text-xs text-slate-900 focus:outline-none focus:border-brand-500" :disabled="clienteForm.identification === '9999999999999'" title="Dirección">
-                        <select v-model="clienteForm.tipo_id" class="col-span-2 bg-white border border-slate-300 rounded px-2 py-1 text-xs text-slate-900 focus:outline-none focus:border-brand-500" :disabled="clienteForm.identification === '9999999999999'">
-                            <option value="04">RUC</option>
-                            <option value="05">Cédula</option>
-                            <option value="06">Pasaporte</option>
-                            <option value="07">Consumidor Final</option>
-                            <option value="08">Identificación Exterior</option>
-                        </select>
+                    <div v-if="clienteForm.email && clienteForm.email !== 'S/D'" class="text-[10px] text-slate-500 truncate ml-10 flex items-center gap-1.5">
+                        <i class="fa-regular fa-envelope"></i> {{ clienteForm.email }}
                     </div>
                 </div>
                 
@@ -210,7 +232,12 @@
                         <input 
                             v-model="busquedaCliente" 
                             @input="buscarClientes"
-                            type="text" 
+                            type="text"
+                            autocomplete="new-password"
+                            data-lpignore="true"
+                            data-1p-ignore="true"
+                            spellcheck="false"
+                            name="pos_client_search_unique"
                             placeholder="Buscar RUC o Cédula o Nombre..." 
                             class="flex-1 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-mono focus:outline-none focus:border-brand-500"
                         >
@@ -233,12 +260,20 @@
                           <div v-for="c in sugerenciasCliente" :key="c.id" @mousedown.prevent="seleccionarClienteModal(c)" class="p-2 border-b border-slate-200 hover:bg-slate-100 cursor-pointer">
                               <div class="text-xs font-bold text-slate-800">{{ c.identification || c.rfc }} - {{ c.name || c.razon_social }}</div>
                           </div>
-                          <div v-if="!sugerenciasCliente.length" @mousedown="mostrarModalCliente = true; prepararNuevoCliente()" class="p-2 text-xs text-slate-600 cursor-pointer hover:bg-slate-100">
-                             No encontrado. Clic para registrar "{{ busquedaCliente }}"
+                          <div v-if="!sugerenciasCliente.length" @mousedown.prevent="mostrarModalCliente = true; prepararNuevoCliente()" class="p-2.5 text-xs text-brand-700 font-bold cursor-pointer hover:bg-brand-50 bg-brand-50/50 border border-brand-100 rounded-md mx-1 my-1 flex items-center gap-2 transition-colors">
+                             <i class="fa-solid fa-user-plus text-brand-500"></i>
+                             <span>No se encontró. Clic aquí para registrar <strong>"{{ busquedaCliente }}"</strong></span>
                           </div>
                         </template>
                     </div>
                 </div>
+            </div>
+
+            <!-- Ventas en espera Bar -->
+            <div v-if="carritosEnEspera.length > 0" class="px-3 py-2 bg-amber-50 border-b border-amber-100 flex gap-2 overflow-x-auto">
+                <button v-for="(v, idx) in carritosEnEspera" :key="v.id" @click="recuperarVenta(idx)" class="whitespace-nowrap bg-white border border-amber-200 text-amber-700 text-[10px] font-bold px-2 py-1 rounded shadow-sm hover:bg-amber-100 transition-colors">
+                    <i class="fa-solid fa-clock-rotate-left mr-1"></i> Venta {{ v.time }} (${{ v.total }})
+                </button>
             </div>
 
             <!-- Cart Items List -->
@@ -265,7 +300,7 @@
 
                     <div class="flex items-center space-x-1 bg-slate-50 border border-slate-200 rounded-lg p-0.5">
                         <button @click="decrementar(index)" class="w-6 h-6 rounded bg-slate-100 hover:bg-slate-700 text-slate-700 text-xs font-bold flex items-center justify-center active:scale-95">-</button>
-                        <span class="w-8 text-center text-xs font-bold font-mono text-slate-900">{{ item.quantity }}</span>
+                        <input v-model.number="item.quantity" @focus="$event.target.select()" @change="item.quantity = Math.max(1, parseInt(item.quantity) || 1)" type="text" inputmode="numeric" pattern="[0-9]*" class="w-10 bg-transparent text-center text-xs font-bold font-mono text-slate-900 outline-none focus:bg-white focus:ring-1 focus:ring-brand-500 rounded transition-all" />
                         <button @click="incrementar(index)" class="w-6 h-6 rounded bg-slate-100 hover:bg-slate-700 text-slate-700 text-xs font-bold flex items-center justify-center active:scale-95">+</button>
                     </div>
 
@@ -280,14 +315,36 @@
 
             <!-- Cart Totals & Checkout Panel -->
             <div class="p-3 bg-white border-t border-slate-200 space-y-2.5">
-                <div class="space-y-1 text-xs font-medium text-slate-600 border-b border-slate-200/80 pb-2">
-                    <div class="flex justify-between">
-                        <span>Subtotal:</span>
+                <div class="space-y-1 text-xs font-medium text-slate-600 border-b border-slate-200/80 pb-2 relative group">
+                    <div class="flex justify-between items-center">
+                        <span>Subtotal Bruto:</span>
+                        <span class="font-mono text-slate-800">${{ subtotalBruto }}</span>
+                    </div>
+                    <div class="flex justify-between items-center group/discount">
+                        <span class="flex items-center gap-1 cursor-pointer text-brand-600 hover:text-brand-800 transition-colors" @click="mostrarDescuentoGlobal = !mostrarDescuentoGlobal">
+                            <i class="fa-solid fa-tag"></i> Descuento
+                            <span v-if="descuentoGlobal > 0" class="text-[9px] bg-brand-100 text-brand-700 px-1 rounded">{{ tipoDescuentoGlobal === '%' ? descuentoGlobal + '%' : '$' + descuentoGlobal }}</span>
+                        </span>
+                        <span class="font-mono text-rose-500 font-bold">-${{ valorDescuentoGlobal.toFixed(2) }}</span>
+                    </div>
+                    
+                    <!-- Panel Descuento Global -->
+                    <div v-if="mostrarDescuentoGlobal" class="bg-slate-50 p-2 rounded-lg border border-slate-200 flex gap-2 items-center mb-1 animate-fade-in-up">
+                        <select v-model="tipoDescuentoGlobal" class="bg-white border border-slate-300 rounded text-[10px] p-1 font-bold outline-none">
+                            <option value="%">% Porcentaje</option>
+                            <option value="$">$ Valor Fijo</option>
+                        </select>
+                        <input v-model.number="descuentoGlobal" type="number" min="0" step="0.01" class="flex-1 w-20 bg-white border border-slate-300 rounded px-2 py-1 text-xs font-mono outline-none" placeholder="0">
+                        <button @click="mostrarDescuentoGlobal = false" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-check"></i></button>
+                    </div>
+
+                    <div class="flex justify-between items-center">
+                        <span>Subtotal Neto:</span>
                         <span class="font-mono text-slate-800">${{ subtotal }}</span>
                     </div>
-                    <div class="flex justify-between">
-                        <span>Monto IVA ({{ parametrosStore.obtener('ventas', 'iva', '12') }}%):</span>
-                        <span class="font-mono text-emerald-400 font-bold">${{ tax }}</span>
+                    <div class="flex justify-between items-center">
+                        <span>Monto IVA ({{ parametrosStore.obtener('ventas', 'iva', '15') }}%):</span>
+                        <span class="font-mono text-emerald-500 font-bold">${{ tax }}</span>
                     </div>
                 </div>
 
@@ -303,22 +360,19 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-4 gap-2">
-                    <button 
-                        @click="carrito = []; productosEnEspera = []"
-                        :disabled="carrito.length === 0 && productosEnEspera.length === 0"
-                        class="col-span-1 bg-slate-100 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-rose-400 border border-slate-300 rounded-xl py-3 font-bold text-xs flex flex-col items-center justify-center transition-all active:scale-95"
-                    >
-                        <i class="fa-solid fa-trash text-sm mb-0.5"></i>
-                        <span class="text-[10px]">Anular</span>
+                <div class="flex gap-2">
+                    <button class="w-1/2 rounded-xl text-xs font-black shadow-lg transition-all flex items-center justify-center space-x-2 px-4 py-3"
+                        :class="(cajaAbierta && esCajero) ? 'bg-gradient-to-r from-brand-500 to-emerald-600 hover:from-brand-400 hover:to-emerald-500 disabled:opacity-40' : 'bg-gradient-to-r from-blue-400 to-indigo-500 hover:from-blue-300 hover:to-indigo-400 disabled:opacity-40 text-white'"
+                        :disabled="carrito.length === 0 || procesando"
+                        @click="(cajaAbierta && esCajero) ? openPaymentModal() : guardarPreFactura(true)">
+                        <i class="fa-solid" :class="(cajaAbierta && esCajero) ? 'fa-cash-register' : 'fa-save'"></i>
+                        <span>{{ (cajaAbierta && esCajero) ? 'COBRAR [F4]' : (procesando ? 'GUARDANDO...' : 'GUARDAR PRE-FACTURA') }}</span>
                     </button>
-                    <button 
-                        @click="openPaymentModal"
-                        :disabled="carrito.length === 0"
-                        class="col-span-3 bg-gradient-to-r from-brand-500 to-emerald-600 hover:from-brand-400 hover:to-emerald-500 disabled:opacity-40 text-slate-950 font-black rounded-xl py-3 text-sm shadow-lg shadow-brand-500/20 flex items-center justify-center space-x-2 transition-all active:scale-[0.98]"
-                    >
-                        <i class="fa-solid fa-cash-register text-base"></i>
-                        <span>COBRAR [F4]</span>
+                    <button class="w-1/2 rounded-xl text-xs font-black shadow-lg transition-all flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-slate-600 to-slate-800 hover:from-slate-500 hover:to-slate-700 disabled:opacity-40 text-white"
+                        :disabled="carrito.length === 0 || procesando"
+                        @click="guardarPreFactura(false)">
+                        <i class="fa-solid fa-file-pdf"></i>
+                        <span>GUARDAR COTIZACIÓN</span>
                     </button>
                 </div>
             </div>
@@ -372,6 +426,14 @@
                      <label class="text-xs font-bold text-slate-700 block mt-2">Valor Pagado</label>
                      <input v-model.number="montoRecibido" type="number" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm font-mono text-slate-900 focus:outline-none focus:border-brand-500">
                 </div>
+
+                <div v-if="tenantFeatures['pos_notas_venta'] && String(parametrosStore.obtener('pos', 'enable_notas_venta', 'false')) === 'true'" class="space-y-2 bg-white p-3 rounded-xl border border-slate-200">
+                    <label class="text-xs font-bold text-slate-700 block">Tipo de Documento</label>
+                    <select v-model="tipoDocumento" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-brand-500">
+                        <option value="01">Factura</option>
+                        <option value="02">Nota de Venta</option>
+                    </select>
+                </div>
                 
                 <p v-if="errorVenta" class="text-xs font-bold text-rose-500 text-center bg-rose-500/10 py-2 rounded">{{ errorVenta }}</p>
                 <div v-if="procesando" class="text-xs text-brand-400 text-center"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Facturando con SRI...</div>
@@ -386,134 +448,114 @@
         </div>
     </div>
 
-    <!-- TICKET 80mm MODAL -->
-    <div v-if="showReceiptModal" class="fixed inset-0 bg-white/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div class="bg-slate-50 border border-slate-200 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
-          <div class="p-4 bg-white border-b border-slate-200 flex items-center justify-between">
-              <h3 class="font-bold text-sm text-slate-900 flex items-center gap-2"><i class="fa-solid fa-receipt text-emerald-400"></i> Ticket Venta (80mm)</h3>
-              <button @click="showReceiptModal = false" class="text-slate-600 hover:text-slate-900 text-sm"><i class="fa-solid fa-xmark"></i></button>
-          </div>
-          <div class="p-4 overflow-y-auto flex-1 bg-white flex justify-center">
-              <div id="printable-ticket" class="w-[280px] bg-white text-slate-950 p-4 rounded shadow-md font-mono text-[11px] leading-tight space-y-2 select-text">
-                  <div class="text-center space-y-0.5">
-                      <h2 class="font-black text-sm uppercase">{{ parametrosStore.obtener('general', 'empresa_nombre', 'EMPRESA DEMO') }}</h2>
-                      <p class="text-[10px]">RUC: {{ parametrosStore.obtener('facturacion', 'ruc_emisor', '9999999999999') }}</p>
-                      <p class="font-bold border-t border-b border-dashed border-slate-400 py-1 my-1">
-                          COMPROBANTE VENTA<br>
-                          Nro: {{ lastSaleData?.id || '---' }}
-                      </p>
-                  </div>
-                  <div class="text-[10px] space-y-0.5 border-b border-dashed border-slate-400 pb-1">
-                      <p><strong>FECHA:</strong> {{ new Date().toLocaleString() }}</p>
-                      <p><strong>CLIENTE:</strong> {{ lastSaleData?.client?.name || 'CONSUMIDOR FINAL' }}</p>
-                  </div>
-                  <div class="border-b border-dashed border-slate-400 pb-1">
-                      <div class="grid grid-cols-12 font-bold mb-1 border-b border-slate-300 pb-0.5">
-                          <span class="col-span-2">CANT</span>
-                          <span class="col-span-6">DESCRIP</span>
-                          <span class="col-span-4 text-right">TOTAL</span>
-                      </div>
-                      <div v-for="item in lastSaleData?.items" :key="item.id" class="grid grid-cols-12 mb-0.5">
-                          <span class="col-span-2 font-bold">{{ item.quantity }}</span>
-                          <span class="col-span-6 truncate">{{ item.description }}</span>
-                          <span class="col-span-4 text-right font-bold">${{ item.total }}</span>
-                      </div>
-                  </div>
-                  <div class="space-y-0.5 text-right font-bold text-[10px] pt-1">
-                      <p>SUBTOTAL: ${{ lastSaleData?.subtotal }}</p>
-                      <p>IVA: ${{ lastSaleData?.tax }}</p>
-                      <p class="text-xs pt-1 border-t border-slate-950 font-black">TOTAL: ${{ lastSaleData?.total }}</p>
-                  </div>
-                  <div class="text-center pt-2 text-[9px] font-bold text-slate-700">¡Gracias por su compra!</div>
-              </div>
-          </div>
-          <div class="p-4 bg-white border-t border-slate-200 flex justify-between items-center">
-              <span class="text-xs text-emerald-400 font-semibold flex items-center gap-1"><i class="fa-solid fa-circle-check"></i> Autorizado</span>
-              <div class="flex gap-2">
-                  <button @click="showReceiptModal = false" class="bg-slate-100 hover:bg-slate-700 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold">Cerrar</button>
-                  <button @click="printReceipt" class="bg-brand-500 hover:bg-brand-400 text-slate-950 font-extrabold px-4 py-1.5 rounded-lg text-xs flex items-center gap-1.5">
-                      <i class="fa-solid fa-print"></i> Imprimir
-                  </button>
-              </div>
-          </div>
-      </div>
-    </div>
+    <!-- COMPONENTIZADOS -->
+    <ReceiptModal 
+      :show="showReceiptModal" 
+      :lastSaleData="lastSaleData"
+      @close="showReceiptModal = false"
+      @print="printReceipt"
+    />
+
+    <PendingOrdersModal 
+      :show="mostrarOrdenesPendientes"
+      :tipoLista="tipoLista"
+      :cargandoOrdenes="cargandoOrdenes"
+      :ordenesPendientesList="ordenesPendientesList"
+      @close="mostrarOrdenesPendientes = false"
+      @cargar="cargarOrdenPendiente"
+      @eliminar="eliminarPreFactura"
+    />
     
     <!-- OTROS MODALES EXISTENTES -->
-    
-    <!-- Modal abrir caja -->
     <div v-if="mostrarAbrirCaja" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-fade-in-up">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-3xl overflow-hidden animate-fade-in-up">
         <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-          <h3 class="font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-lock-open text-brand-500"></i> Abrir Caja</h3>
-          <button @click="mostrarAbrirCaja = false" class="text-slate-400 hover:text-slate-600 transition-colors"><i class="fa-solid fa-xmark"></i></button>
+          <h3 class="font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-user-lock text-brand-500"></i> Asignar Trabajador</h3>
+          <button v-if="canCloseModal" @click="mostrarAbrirCaja = false" class="text-slate-400 hover:text-slate-600 transition-colors"><i class="fa-solid fa-xmark"></i></button>
         </div>
-        <div class="p-5 space-y-4">
-          <div>
-            <label class="block text-xs font-semibold text-slate-700 mb-1">Sucursal</label>
-            <select v-model="formCaja.sucursal_id" @change="cargarCajasPorSucursal" class="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all outline-none">
-              <option value="null" disabled>Selecciona una sucursal</option>
-              <option v-for="s in sucursales" :key="s.id" :value="s.id">{{ s.name }}</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-slate-700 mb-1">Caja Física</label>
-            <select v-model="formCaja.name" class="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all outline-none" :disabled="!cajasRegistradas.length">
-              <option value="" disabled>Selecciona una caja</option>
-              <option v-for="c in cajasRegistradas" :key="c.id" :value="c.name">{{ c.name }}</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-slate-700 mb-1">Cajero Asignado</label>
+        <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-6">
+          
+          <div class="space-y-4">
+            <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Trabajador Asignado</label>
             <select v-model="formCaja.cajero_id" class="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all outline-none">
-              <option value="null" disabled>Selecciona un cajero</option>
-              <option v-for="e in employees" :key="e.id" :value="e.id">{{ e.name }}</option>
+              <option value="null" disabled>Selecciona un trabajador</option>
+              <option v-for="e in employees" :key="e.id" :value="e.id">{{ e.name }} - {{ e.position }}</option>
             </select>
           </div>
           <div>
-            <label class="block text-xs font-semibold text-slate-700 mb-1">PIN de Caja</label>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">PIN Secreto</label>
             <input v-model="formCaja.pin_caja" type="password" class="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all outline-none" placeholder="****" />
           </div>
-          <div>
-            <div class="flex justify-between items-center mb-1">
-               <label class="block text-xs font-semibold text-slate-700">Saldo inicial en efectivo ($)</label>
-               <label class="flex items-center space-x-1.5 text-xs text-slate-500 cursor-pointer">
-                  <input type="checkbox" v-model="usarDesgloseFondo" class="rounded border-slate-300 text-brand-500 focus:ring-brand-500">
-                  <span>Desglose de efectivo</span>
-               </label>
-            </div>
-            
-            <div v-if="usarDesgloseFondo" class="bg-slate-50 border border-slate-200 rounded-lg p-3 mt-2 grid grid-cols-2 gap-4">
-               <div>
-                  <h4 class="text-[10px] font-bold text-slate-500 mb-2 border-b border-slate-200 pb-1">BILLETES</h4>
-                  <div class="space-y-1.5">
-                     <div v-for="(count, bill) in breakdownCaja.billetes" :key="'bill-'+bill" class="flex items-center justify-between">
-                        <span class="text-xs text-slate-600 font-mono w-10">${{bill}}</span>
-                        <input type="number" min="0" v-model="breakdownCaja.billetes[bill]" class="w-16 h-7 text-xs border border-slate-200 rounded px-1 text-center bg-white" />
-                     </div>
-                  </div>
-               </div>
-               <div>
-                  <h4 class="text-[10px] font-bold text-slate-500 mb-2 border-b border-slate-200 pb-1">MONEDAS</h4>
-                  <div class="space-y-1.5">
-                     <div v-for="(count, coin) in breakdownCaja.monedas" :key="'coin-'+coin" class="flex items-center justify-between">
-                        <span class="text-xs text-slate-600 font-mono w-10">${{coin}}</span>
-                        <input type="number" min="0" v-model="breakdownCaja.monedas[coin]" class="w-16 h-7 text-xs border border-slate-200 rounded px-1 text-center bg-white" />
-                     </div>
-                  </div>
-               </div>
-               <div class="col-span-2 pt-2 border-t border-slate-200 flex justify-between items-center">
-                  <span class="text-xs font-bold text-slate-600">Total Arqueo:</span>
-                  <span class="font-mono font-bold text-brand-600">${{ totalBreakdown }}</span>
-               </div>
-            </div>
 
-            <input v-else v-model="formCaja.saldo_inicial" type="number" step="0.01" class="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all outline-none font-mono" placeholder="0.00" />
+              <div class="pt-3 border-t border-slate-200 mt-3" v-show="esCajero && !tieneCajaAbierta">
+                <h4 class="text-[10px] font-bold text-slate-500 uppercase mb-3">Configuración de Caja</h4>
+                <div class="space-y-4">
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Sucursal</label>
+                    <select v-model="formCaja.sucursal_id" @change="cargarCajasPorSucursal" class="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all outline-none">
+                      <option value="null" disabled>Selecciona una sucursal</option>
+                      <option v-for="s in sucursales" :key="s.id" :value="s.id">{{ s.name }}</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Caja Física</label>
+                    <select v-model="formCaja.name" class="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all outline-none" :disabled="!cajasRegistradas.length">
+                      <option value="" disabled>Selecciona una caja</option>
+                      <option v-for="c in cajasRegistradas" :key="c.id" :value="c.name">{{ c.name }}</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
           </div>
+          
+          <div v-if="tieneCajaAbierta" class="bg-blue-50 text-blue-800 p-4 rounded-xl text-sm border border-blue-100">
+            <p class="font-semibold mb-1"><i class="fa-solid fa-circle-info mr-1"></i> Tienes un turno abierto</p>
+            <p class="text-blue-700">Has seleccionado un cajero que ya cuenta con una caja abierta. Ingresa tu PIN para continuar con tu turno.</p>
+          </div>
+
+          <div class="bg-slate-50/50 p-4 rounded-xl border border-slate-100" v-show="esCajero && !tieneCajaAbierta">
+                    <div class="flex justify-between items-center mb-1">
+                       <label class="block text-xs font-semibold text-slate-700">Saldo inicial en efectivo ($)</label>
+                       <label class="flex items-center space-x-1.5 text-xs text-slate-500 cursor-pointer">
+                          <input type="checkbox" v-model="usarDesgloseFondo" class="rounded border-slate-300 text-brand-500 focus:ring-brand-500">
+                          <span>Desglose</span>
+                       </label>
+                    </div>
+                    
+                    <div v-if="!usarDesgloseFondo">
+                       <input v-model.number="formCaja.saldo_inicial" type="number" min="0" step="0.01" class="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all outline-none" placeholder="0.00" />
+                    </div>
+                    <div v-else class="bg-slate-50 border border-slate-200 rounded-lg p-3 mt-2 grid grid-cols-2 gap-4">
+                       <div>
+                          <h4 class="text-[10px] font-bold text-slate-500 mb-2 border-b border-slate-200 pb-1">BILLETES</h4>
+                          <div class="space-y-1.5">
+                             <div v-for="(count, bill) in breakdownCaja.billetes" :key="'bill-'+bill" class="flex items-center justify-between">
+                                <span class="text-xs text-slate-600 font-mono w-10">${{bill}}</span>
+                                <input type="number" min="0" v-model="breakdownCaja.billetes[bill]" class="w-16 h-7 text-xs border border-slate-200 rounded px-1 text-center bg-white" />
+                             </div>
+                          </div>
+                       </div>
+                       <div>
+                          <h4 class="text-[10px] font-bold text-slate-500 mb-2 border-b border-slate-200 pb-1">MONEDAS</h4>
+                          <div class="space-y-1.5">
+                             <div v-for="(count, coin) in breakdownCaja.monedas" :key="'coin-'+coin" class="flex items-center justify-between">
+                                <span class="text-xs text-slate-600 font-mono w-10">${{coin}}</span>
+                                <input type="number" min="0" v-model="breakdownCaja.monedas[coin]" class="w-16 h-7 text-xs border border-slate-200 rounded px-1 text-center bg-white" />
+                             </div>
+                          </div>
+                       </div>
+                       <div class="col-span-2 pt-2 border-t border-slate-200 flex justify-between items-center">
+                          <span class="text-xs font-bold text-slate-600">Total Arqueo:</span>
+                          <span class="font-mono font-bold text-brand-600">${{ totalBreakdown }}</span>
+                       </div>
+                    </div>
+                  </div>
         </div>
         <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">
-          <button @click="mostrarAbrirCaja = false" class="px-4 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">Cancelar</button>
-          <button @click="abrirCaja" class="px-4 py-2 text-xs font-bold text-slate-950 bg-brand-400 hover:bg-brand-500 rounded-lg shadow-md shadow-brand-500/20 transition-colors flex items-center gap-1.5"><i class="fa-solid fa-check"></i> Abrir Turno</button>
+          <button v-if="canCloseModal" @click="mostrarAbrirCaja = false" class="px-4 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">Cancelar</button>
+          <button v-else @click="router.push('/')" class="px-4 py-2 text-xs font-bold text-rose-600 bg-white border border-rose-200 rounded-lg hover:bg-rose-50 transition-colors"><i class="fa-solid fa-arrow-left mr-1"></i> Salir del POS</button>
+          <button @click="abrirCaja" class="px-4 py-2 text-xs font-bold text-slate-950 bg-brand-400 hover:bg-brand-500 rounded-lg shadow-md shadow-brand-500/20 transition-colors flex items-center gap-1.5"><i class="fa-solid fa-check"></i> {{ tieneCajaAbierta ? 'Continuar Turno' : 'Iniciar Turno' }}</button>
         </div>
       </div>
     </div>
@@ -774,7 +816,6 @@
           </table>
         </div>
       </div>
-      
       <div class="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
         <button @click="mostrarHistorialModal = false" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg font-medium transition-colors">
           Cerrar
@@ -782,11 +823,25 @@
       </div>
     </div>
   </div>
+        <!-- Customer Modal -->
+        <CustomerModal 
+            v-if="mostrarModalCliente"
+            :form="clienteForm" 
+            :updateCustomer="updateCustomer" 
+            @update:form="clienteForm = $event" 
+            @update:updateCustomer="updateCustomer = $event" 
+            @close="mostrarModalCliente = false" 
+        />
 </template>
 
 <script setup>
 import { onMounted, onUnmounted, ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import ReceiptModal from './components/ReceiptModal.vue'
+import PendingOrdersModal from './components/PendingOrdersModal.vue'
+import CustomerModal from './components/CustomerModal.vue'
+
+const router = useRouter()
 import { useAuthStore } from '@/stores/auth'
 import { useTenantStore } from '@/stores/tenant'
 import { useParametrosStore } from '@/stores/parametros'
@@ -804,22 +859,105 @@ const busqueda = ref('')
 const mostrarDetalleProducto = ref(false)
 const productoSeleccionado = ref(null)
 const productosEnEspera = ref([])
+const carritosEnEspera = ref([])
+const mostrarOrdenesPendientes = ref(false)
+const tipoLista = ref('pendientes')
+const ordenPendienteId = ref(null)
+const cargandoOrdenes = ref(false)
+const ordenesPendientesList = ref([])
+function pausarVenta() {
+    if (carrito.value.length === 0) return;
+    carritosEnEspera.value.push({
+        id: Date.now(),
+        time: new Date().toLocaleTimeString(),
+        clienteForm: JSON.parse(JSON.stringify(clienteForm.value || {})),
+        busquedaCliente: busquedaCliente.value,
+        carrito: JSON.parse(JSON.stringify(carrito.value)),
+        total: total.value
+    });
+    carrito.value = [];
+    clienteForm.value = { name: 'CONSUMIDOR FINAL', identification: '9999999999999', tipo_id: '07', email: '', address: 'S/D' };
+    busquedaCliente.value = '';
+    showAlert({ type: 'success', title: 'Pausada', message: 'Venta en espera' });
+}
+
+function recuperarVenta(index) {
+    const v = carritosEnEspera.value[index];
+    carrito.value = v.carrito;
+    clienteForm.value = v.clienteForm;
+    busquedaCliente.value = v.busquedaCliente;
+    carritosEnEspera.value.splice(index, 1);
+}
+
+let barcodeBuffer = ''
+let barcodeTimeout = null
+
+const handleGlobalKeypress = async (e) => {
+  if (mostrarAbrirCaja.value || mostrarCerrarCaja.value || showModernPaymentModal.value || showReceiptModal.value || mostrarMovimientosCaja.value || mostrarHistorialModal.value) return;
+
+  const isInput = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT';
+  if (isInput && e.target.type !== 'radio' && e.target.type !== 'checkbox') {
+    if (e.target !== inputBusqueda.value) return; 
+  }
+
+  if (e.key === 'Enter') {
+    if (barcodeBuffer.length > 3) {
+      let code = barcodeBuffer;
+      let calcQty = 1;
+      
+      if (tenantFeatures.value['pos_scale_barcodes'] && code.length === 13 && code.startsWith('20')) {
+          const itemCode = code.substring(2, 7);
+          const weightStr = code.substring(7, 12);
+          code = itemCode;
+          calcQty = parseInt(weightStr, 10) / 1000.0;
+      }
+      
+      barcodeBuffer = '';
+      try {
+        const { data } = await api.get(`/inventario/products/?q=${code}`);
+        if (data && data.length > 0) {
+            const exactMatch = data.find(p => p.code === code || p.codigo === code) || data[0];
+            const existente = carrito.value.find(i => i.product_id === exactMatch.id);
+            if (existente) {
+              existente.quantity += calcQty;
+            } else {
+              carrito.value.push({
+                product_id: exactMatch.id,
+                code: exactMatch.code || exactMatch.codigo || '-',
+                description: exactMatch.name || exactMatch.nombre || '-',
+                quantity: calcQty,
+                unit_price: parseFloat(exactMatch.sale_price || exactMatch.precio_venta || 0),
+                discount: 0,
+                tarifa_iva: String(exactMatch.vat_rate || exactMatch.tarifa_iva || parametrosStore.obtener('ventas', 'iva', '15'))
+              });
+            }
+            showAlert({type: 'success', title: 'Escaneado', message: exactMatch.name || exactMatch.description || exactMatch.nombre});
+            busqueda.value = ''; 
+        } else {
+            showAlert({type: 'error', title: 'Error', message: 'No encontrado: ' + code});
+        }
+      } catch (err) {}
+    }
+    return;
+  }
+  if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+    barcodeBuffer += e.key;
+    clearTimeout(barcodeTimeout);
+    barcodeTimeout = setTimeout(() => { barcodeBuffer = ''; }, 100);
+  }
+}
 
 // Historial del Turno Actual
 const mostrarHistorialModal = ref(false)
 const ventasTurno = ref([])
 const cargandoHistorial = ref(false)
+const tenantFeatures = ref({})
 
 const productosFiltrados = computed(() => {
     if (selectedCategory.value === 'todos') {
         return productosEnEspera.value
     }
-    
-    let result = products.value
-    if (selectedCategory.value !== 'todos') {
-        result = result.filter(p => p.category_id === selectedCategory.value)
-    }
-    return result
+    return productosEnEspera.value.filter(p => p.category === selectedCategory.value)
 })
 
 function getImageUrl(url) {
@@ -837,19 +975,20 @@ function removerDeEspera(id) {
 }
 
 function obtenerStockSucursalActual(p) {
-    const branchId = cajaAbierta.value?.register?.branch_id || cajaAbierta.value?.branch_id;
+    const branchId = cajaAbierta.value?.register?.branch_id || cajaAbierta.value?.branch_id || trabajadorAsignado.value?.sucursal_id || authStore.sucursal_id;
     if (!branchId || !p.branch_stocks || p.branch_stocks.length === 0) {
         return parseFloat(p.current_stock || 0)
     }
     const bs = p.branch_stocks.find(b => b.branch_id === branchId)
     return bs ? parseFloat(bs.quantity) : 0
 }
-const simulatedCategories = ref([
-    { id: 'todos', name: 'Todos', icon: 'fa-solid fa-border-all' },
-    { id: 'repuestos', name: 'Repuestos', icon: 'fa-solid fa-gears' },
-    { id: 'ferreteria', name: 'Ferretería', icon: 'fa-solid fa-hammer' },
-    { id: 'minimarket', name: 'Minimarket / Alimentos', icon: 'fa-solid fa-basket-shopping' },
-])
+const categoriasPOS = computed(() => {
+  const param = parametrosStore.obtener('inventario', 'categorias_productos', 'General, Alimentos, Bebidas, Electrónica, Ropa')
+  let cats = []
+  if (Array.isArray(param)) cats = param
+  else cats = String(param).split(',').map(s => s.trim()).filter(s => s)
+  return [{ id: 'todos', name: 'Todos' }, ...cats.map(c => ({ id: c, name: c }))]
+})
 const selectedCategory = ref('todos')
 
 const showModernPaymentModal = ref(false)
@@ -879,7 +1018,66 @@ const toggleQuickClient = () => {
     }
 }
 
-const printReceipt = () => { window.print() }
+const printReceipt = async () => {
+    try {
+        if ('serial' in navigator) {
+            const ports = await navigator.serial.getPorts();
+            if (ports.length > 0) {
+                const port = ports[0];
+                await port.open({ baudRate: 9600 });
+                const writer = port.writable.getWriter();
+                const tenantName = tenantStore.currentTenant?.name || 'MI NEGOCIO';
+                const ticketNumber = ticketVenta.value?.invoice_number || 'N/A';
+                const text = `
+--------------------------------
+${tenantName}
+--------------------------------
+Ticket: ${ticketNumber}
+Total: $${ticketVenta.value?.total || '0.00'}
+--------------------------------
+Gracias por su compra
+\n\n\n\n`;
+                const encoder = new TextEncoder();
+                await writer.write(encoder.encode(text));
+                await writer.write(new Uint8Array([0x1D, 0x56, 0x00])); 
+                writer.releaseLock();
+                await port.close();
+                return;
+            }
+        }
+    } catch (e) {
+        console.warn("Fallo impresión Serial:", e);
+    }
+
+    const ticketDiv = document.getElementById('printable-ticket');
+    if (!ticketDiv) return window.print();
+
+    const content = ticketDiv.outerHTML;
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = 'none';
+    document.body.appendChild(iframe);
+    
+    const doc = iframe.contentWindow.document;
+    doc.open();
+    doc.write('<html><head><title>Ticket</title>');
+    doc.write('<script src="https://cdn.tailwindcss.com"><\\/script>');
+    doc.write('<style>@media print { body { margin:0; padding:10px; width:80mm !important; font-family:monospace; } }</style>');
+    doc.write('</head><body>');
+    doc.write(content);
+    doc.write('</body></html>');
+    doc.close();
+    
+    setTimeout(() => {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+        setTimeout(() => { document.body.removeChild(iframe); }, 1000);
+    }, 1000);
+}
 
 const procesarCobroWrapper = async () => {
    const cartBackup = JSON.parse(JSON.stringify(carrito.value))
@@ -887,6 +1085,7 @@ const procesarCobroWrapper = async () => {
    const saleTotal = total.value
    const saleTax = tax.value
    const saleSubtotal = subtotal.value
+   const docType = tipoDocumento.value
    
    let success = false
    try {
@@ -912,6 +1111,128 @@ const procesarCobroWrapper = async () => {
    }
 }
 
+async function guardarPreFactura(isPreInvoice = true) {
+  if (carrito.value.length === 0) return
+  procesando.value = true
+  
+  try {
+    const tIva = parseFloat(parametrosStore.obtener('ventas', 'iva', '15')) / 100
+    const paymentForm = (metodoPago.value === 'efectivo' || !metodoPago.value) ? '01' : '20'
+    const finalCustomerId = (clienteForm.value.id === 1 && clienteForm.value.identification !== '9999999999999') ? null : (clienteForm.value.id || null);
+    
+    const payload = {
+      customer_id: finalCustomerId, 
+      customer: {
+        customer_id: finalCustomerId,
+        name: clienteForm.value.name || 'CONSUMIDOR FINAL',
+        identifier: clienteForm.value.identification || '9999999999999',
+        id_type: clienteForm.value.tipo_id || '07',
+        email: clienteForm.value.email || '',
+        address: clienteForm.value.address || 'S/D',
+        payment_form: paymentForm,
+        payment_term: 0,
+        payment_time: 'dias'
+      },
+      notes: isPreInvoice ? "Pre-Factura desde POS" : "Cotización desde POS",
+      is_preinvoice: isPreInvoice,
+      seller_id: trabajadorAsignado.value ? trabajadorAsignado.value.id : null,
+      branch_id: authStore.sucursal_id || trabajadorAsignado.value?.sucursal_id || null,
+      vat: parseFloat(parametrosStore.obtener('ventas', 'iva', '15')),
+      items: carrito.value.map(i => ({
+        product_id: i.product_id,
+        description: i.description || i.name,
+        quantity: i.quantity,
+        unit_price: i.unit_price / (1 + tIva),
+        discount: i.discount || 0
+      }))
+    }
+    await api.post('/ventas/quotations/', payload)
+    useAlert().showToast(isPreInvoice ? 'Pre-Factura guardada' : 'Cotización guardada', 'success')
+    limpiarDespuesDeVenta()
+  } catch (e) {
+    useAlert().showToast(e.response?.data?.error || 'Error al guardar', 'error')
+  } finally {
+    procesando.value = false
+  }
+}
+
+async function abrirLista(tipo) {
+  tipoLista.value = tipo
+  mostrarOrdenesPendientes.value = true
+  cargandoOrdenes.value = true
+  ordenesPendientesList.value = []
+  try {
+    const sucursal_id = authStore.sucursal_id || trabajadorAsignado.value?.sucursal_id || '';
+    const endpoint = tipo === 'pendientes' ? `/pos/pending-orders/?sucursal_id=${sucursal_id}` : `/pos/pos-quotations/`
+    const { data } = await api.get(endpoint)
+    ordenesPendientesList.value = data
+  } catch (e) {
+    useAlert().showToast('Error al cargar la lista', 'error')
+  } finally {
+    cargandoOrdenes.value = false
+  }
+}
+
+async function cargarOrdenPendiente(orden) {
+  try {
+    const { data } = await api.get(`/ventas/quotations/${orden.id}/`)
+    const tIva = parseFloat(parametrosStore.obtener('ventas', 'iva', '15')) / 100
+    
+    carrito.value = data.items.map(i => ({
+        product_id: i.product_id,
+        code: i.code || '-',
+        description: i.description || '-',
+        quantity: parseFloat(i.quantity),
+        unit_price: Number((parseFloat(i.unit_price) * (1 + tIva)).toFixed(2)),
+        discount: parseFloat(i.discount || 0),
+        tarifa_iva: String(parametrosStore.obtener('ventas', 'iva', '15'))
+    }))
+    
+    clienteForm.value = {
+      id: data.customer_id,
+      name: data.customer_name,
+      identification: data.customer_rfc || '9999999999999',
+      tipo_id: '05',
+      email: data.customer_email || '',
+      address: data.customer_address || 'S/D'
+    }
+    
+    ordenPendienteId.value = orden.id
+    mostrarOrdenesPendientes.value = false
+    useAlert().showToast('Pre-Factura cargada al carrito', 'success')
+  } catch(e) {
+    useAlert().showToast('No se pudo cargar el detalle', 'error')
+  }
+}
+
+async function eliminarPreFactura(id) {
+  const confirmed = await useAlert().showAlert({ type: 'confirm', title: 'Eliminar Orden', message: '¿Estás seguro de que deseas eliminar esta orden?' })
+  if (!confirmed) return
+  try {
+    await api.delete(`/ventas/quotations/${id}/`)
+    useAlert().showToast('Orden eliminada exitosamente', 'success')
+    // Recargar la lista
+    const sucursal_id = authStore.sucursal_id || trabajadorAsignado.value?.sucursal_id || '';
+    const endpoint = tipoLista.value === 'pendientes' ? `/pos/pending-orders/?sucursal_id=${sucursal_id}` : `/pos/pos-quotations/`
+    const { data } = await api.get(endpoint)
+    ordenesPendientesList.value = data
+  } catch (e) {
+    useAlert().showToast('Error al eliminar la orden', 'error')
+  }
+}
+
+function limpiarDespuesDeVenta() {
+  showModernPaymentModal.value = false
+  carrito.value = []
+  descuentoGlobal.value = 0
+  montoRecibido.value = 0
+  metodoPago.value = 'efectivo'
+  nroComprobante.value = ''
+  productosEnEspera.value = []
+  establecerConsumidorFinalModal()
+  ordenPendienteId.value = null
+}
+
 const sugerenciasProducto = ref([])
 const mostrarSugerenciasProducto = ref(false)
 const buscandoProducto = ref(false)
@@ -931,7 +1252,17 @@ function onBusquedaInput() {
       const { data } = await api.get(`/inventario/products/?q=${busqueda.value}`)
       sugerenciasProducto.value = data
     } catch (e) {
-      console.error('Error buscando', e)
+      console.warn('Buscando en caché offline')
+      const cachedStr = localStorage.getItem('pos_products_cache');
+      if (cachedStr) {
+         const cached = JSON.parse(cachedStr);
+         const term = busqueda.value.toLowerCase();
+         sugerenciasProducto.value = cached.filter(p => 
+           (p.name||'').toLowerCase().includes(term) || 
+           (p.description||'').toLowerCase().includes(term) || 
+           (p.code||'').toLowerCase().includes(term)
+         ).slice(0, 10);
+      }
     } finally {
       buscandoProducto.value = false
     }
@@ -957,16 +1288,57 @@ const metodoPago = ref('efectivo')
 const nroComprobante = ref('')
 const montoRecibido = ref(0)
 const procesando = ref(false)
+const tipoDocumento = ref('01')
 const errorVenta = ref('')
 const ticketVenta = ref(null)
+const savedWorker = localStorage.getItem('pos_trabajador_asignado')
+const trabajadorAsignado = ref(savedWorker ? JSON.parse(savedWorker) : null)
+
+watch(trabajadorAsignado, (val) => {
+    if (val) {
+        localStorage.setItem('pos_trabajador_asignado', JSON.stringify(val))
+    } else {
+        localStorage.removeItem('pos_trabajador_asignado')
+    }
+}, { deep: true })
 const cajaAbierta = ref(null)
 const cajasRegistradas = ref([])
 const employees = ref([])
 const sucursales = ref([])
 const cargandoPOS = ref(false)
 
+const esCajero = computed(() => {
+  if (authStore.esSuperAdmin) return true;
+  let emp = null;
+  if (trabajadorAsignado.value) {
+    emp = trabajadorAsignado.value;
+  } else if (formCaja.value.cajero_id) {
+    emp = employees.value.find(e => e.id === formCaja.value.cajero_id);
+  }
+  if (!emp) return false;
+  return emp.pos_access === 'cashier' || (emp.position && emp.position.toLowerCase().includes('cajero'));
+})
+
+const canCloseModal = computed(() => {
+  if (!trabajadorAsignado.value) return false;
+  // Si no hay caja abierta, obligamos a que no puedan cerrar el modal
+  // a menos que sean vendedores (quienes no abren caja)
+  const emp = employees.value.find(e => e.id === trabajadorAsignado.value.id);
+  if (!cajaAbierta.value && emp && emp.pos_access === 'cashier') {
+    return false;
+  }
+  // Si no hay emp (por alguna razon), bloqueamos
+  if (!emp && !cajaAbierta.value) return false;
+  return true;
+})
+
 
 const mostrarAbrirCaja = ref(false)
+
+const tieneCajaAbierta = computed(() => {
+  if (!formCaja.value.cajero_id) return false;
+  return cajasAbiertasTotales.value.some(c => Number(c.user_id) === Number(formCaja.value.cajero_id));
+})
 const mostrarCerrarCaja = ref(false)
 const mostrarModalCliente = ref(false)
 const mostrarModalFactura = ref(false)
@@ -976,6 +1348,8 @@ const mostrarPickerEmpleado = ref(false)
 const cajaSeleccionada = ref(null)
 const empleadoSeleccionado = ref(null)
 const resumenCierre = ref(null)
+
+const cajasAbiertasTotales = ref([])
 const formCaja = ref({ name: '', saldo_inicial: 0, cajero_id: null, pin_caja: '', sucursal_id: null })
 const formCierre = ref({ saldo_final: 0 })
 const mostrarMovimientosCaja = ref(false)
@@ -983,11 +1357,11 @@ const formMovimiento = ref({ tipo: 'outflow', monto: 0, motivo: '' })
 
 async function registrarMovimiento() {
     if (formMovimiento.value.monto <= 0) {
-        showAlert('El monto debe ser mayor a 0', 'error')
+        showAlert({ type: 'error', title: 'Error', message: 'El monto debe ser mayor a 0' })
         return
     }
     if (!formMovimiento.value.motivo.trim()) {
-        showAlert('Ingrese un motivo para el movimiento', 'error')
+        showAlert({ type: 'error', title: 'Error', message: 'Ingrese un motivo para el movimiento' })
         return
     }
     try {
@@ -996,12 +1370,12 @@ async function registrarMovimiento() {
             amount: formMovimiento.value.monto,
             reason: formMovimiento.value.motivo
         })
-        showAlert('Movimiento registrado con éxito', 'success')
+        showAlert({ type: 'success', title: 'Éxito', message: 'Movimiento registrado con éxito' })
         mostrarMovimientosCaja.value = false
         formMovimiento.value = { tipo: 'outflow', monto: 0, motivo: '' }
     } catch (e) {
         console.error(e)
-        showAlert(e.response?.data?.error || 'Error al registrar movimiento', 'error')
+        showAlert({ type: 'error', title: 'Error', message: e.response?.data?.error || 'Error al registrar movimiento' })
     }
 }
 
@@ -1043,13 +1417,15 @@ const metodosList = ref([])
 const cargarMetodosPago = async () => {
   try {
     const { data } = await api.get('/ventas/payment-methods/')
-    metodosList.value = data.filter(m => m.active !== false).map(m => ({
-      name: m.id, // using ID as the value for the backend
-      label: m.name,
-      requires_reference: m.requires_reference
-    }))
-    if (metodosList.value.length > 0 && !metodoPago.value) {
-      metodoPago.value = metodosList.value[0].name
+    if (data && data.length > 0) {
+      metodosList.value = data.filter(m => m.active !== false).map(m => ({
+        name: m.id, // using ID as the value for the backend
+        label: m.name,
+        requires_reference: m.requires_reference
+      }))
+      if (!metodoPago.value) {
+        metodoPago.value = metodosList.value[0].name
+      }
     }
   } catch (error) {
     console.error('Error cargando metodos de pago:', error)
@@ -1070,14 +1446,32 @@ watch(metodosList, (list) => {
   }
 }, { immediate: true })
 
+const mostrarDescuentoGlobal = ref(false)
+const descuentoGlobal = ref(0)
+const tipoDescuentoGlobal = ref('%')
+
 const subtotalItem = (item) => {
   const base = item.quantity * item.unit_price
-  return (base - (base * item.discount / 100)).toFixed(2)
+  return (base - (base * (item.discount || 0) / 100)).toFixed(2)
 }
 
-const total = computed(() =>
-  carrito.value.reduce((acc, i) => acc + parseFloat(subtotalItem(i)), 0).toFixed(2)
-)
+const subtotalBruto = computed(() => {
+  return carrito.value.reduce((acc, i) => acc + parseFloat(subtotalItem(i)), 0).toFixed(2);
+});
+
+const valorDescuentoGlobal = computed(() => {
+  if (descuentoGlobal.value <= 0) return 0;
+  if (tipoDescuentoGlobal.value === '%') {
+    return parseFloat(subtotalBruto.value) * (descuentoGlobal.value / 100);
+  }
+  return parseFloat(descuentoGlobal.value);
+});
+
+const total = computed(() => {
+  const t = parseFloat(subtotalBruto.value) - valorDescuentoGlobal.value;
+  return Math.max(0, t).toFixed(2);
+});
+
 const tasaIva = computed(() => parseFloat(parametrosStore.obtener('ventas', 'iva', '15')) / 100)
 const subtotal = computed(() => (parseFloat(total.value) / (1 + tasaIva.value)).toFixed(2))
 const tax = computed(() => (parseFloat(total.value) - parseFloat(subtotal.value)).toFixed(2))
@@ -1095,21 +1489,49 @@ const cambio = computed(() => {
 })
 
 async function cargarProductos() {
-  const params = busqueda.value ? { q: busqueda.value } : {}
-  const { data } = await api.get('/inventario/products/', { params })
-  products.value = data
+  try {
+    const params = busqueda.value ? { q: busqueda.value } : {}
+    const { data } = await api.get('/inventario/products/', { params })
+    products.value = data
+    if (!busqueda.value) localStorage.setItem('pos_products_cache', JSON.stringify(data));
+  } catch (err) {
+    if (!busqueda.value) {
+      const cached = localStorage.getItem('pos_products_cache');
+      if (cached) {
+        products.value = JSON.parse(cached);
+        showAlert({type: 'warning', title: 'Modo Offline', message: 'Se cargaron los productos desde la caché local.'});
+      }
+    }
+  }
 }
 
 async function buscarProducto() {
   if (!busqueda.value) return
+  
+  let code = busqueda.value;
+  let calcQty = 1;
+  
+  if (tenantFeatures.value['pos_scale_barcodes'] && code.length === 13 && code.startsWith('20')) {
+      const itemCode = code.substring(2, 7);
+      const weightStr = code.substring(7, 12);
+      code = itemCode;
+      calcQty = parseInt(weightStr, 10) / 1000.0;
+  }
+  
   try {
-    const { data } = await api.get(`/inventario/products/?q=${busqueda.value}`)
+    const { data } = await api.get(`/inventario/products/?q=${code}`)
     if (data.length > 0) {
-      const exactMatch = data.find(p => p.code === busqueda.value || p.codigo === busqueda.value)
+      const exactMatch = data.find(p => p.code === code || p.codigo === code)
       const producto = exactMatch || data[0]
       if (!productosEnEspera.value.find(p => p.id === producto.id)) {
         productosEnEspera.value.unshift(producto)
       }
+      
+      // Si fue escaneado como balanza y encontro algo, lo agrega directo
+      if (tenantFeatures.value['pos_scale_barcodes'] && calcQty !== 1) {
+          agregarItem(producto, calcQty)
+      }
+      
       selectedCategory.value = 'todos'
       busqueda.value = ''
       mostrarSugerenciasProducto.value = false
@@ -1121,16 +1543,16 @@ async function buscarProducto() {
   }
 }
 
-function agregarItem(producto) {
+function agregarItem(producto, customQty = 1) {
   const existente = carrito.value.find(i => i.product_id === producto.id)
   if (existente) {
-    existente.quantity++
+    existente.quantity += customQty
   } else {
     carrito.value.push({
       product_id: producto.id,
       code: producto.code || producto.codigo || '-',
       description: producto.name || producto.nombre || '-',
-      quantity: 1,
+      quantity: customQty,
       unit_price: parseFloat(producto.sale_price || producto.precio_venta || 0),
       discount: 0,
       tarifa_iva: String(producto.vat_rate || producto.tarifa_iva || parametrosStore.obtener('ventas', 'iva', '15'))
@@ -1215,30 +1637,79 @@ function guardarClienteModal() {
 }
 
 async function abrirCaja() {
+  if (!formCaja.value.cajero_id) {
+    await useAlert().showToast('Selecciona un empleado responsable antes de continuar.', 'warning')
+    return
+  }
+  if (!formCaja.value.pin_caja) {
+    await useAlert().showToast('Debes ingresar el PIN secreto.', 'warning')
+    return
+  }
+
+  if (!tieneCajaAbierta.value && !formCaja.value.sucursal_id) {
+    await useAlert().showToast('Debes seleccionar una sucursal.', 'warning')
+    return
+  }
+
+  const selectedEmployee = employees.value.find(e => e.id === formCaja.value.cajero_id)
+
+  if (!selectedEmployee || selectedEmployee.pos_access === 'none') {
+    await useAlert().showToast('Este trabajador no tiene acceso al POS.', 'error')
+    return
+  }
+  
+  // SE REALIZA LA VALIDACIÓN DE CAJA FÍSICA Y SUCURSAL, Y SE ABRE TURNO EN EL BACKEND PARA TODOS LOS TRABAJADORES
+
+  if (!esCajero.value || tieneCajaAbierta.value) {
+    // Si es Vendedor o si el Cajero ya tiene una caja abierta: Verificamos PIN para ingresar
+    try {
+      const { data } = await api.post('/pos/verify-pin/', {
+        cajero_id: formCaja.value.cajero_id,
+        pin_caja: formCaja.value.pin_caja
+      })
+      if (esCajero.value && tieneCajaAbierta.value) {
+        cajaAbierta.value = cajasAbiertasTotales.value.find(c => Number(c.user_id) === Number(formCaja.value.cajero_id))
+      } else {
+        const cajaDeSucursal = cajasAbiertasTotales.value.find(c => Number(c.branch_id) === Number(formCaja.value.sucursal_id))
+        if (!cajaDeSucursal) {
+           await useAlert().showToast('No hay una caja abierta en esta sucursal. El cajero debe abrirla primero.', 'error')
+           return
+        }
+        cajaAbierta.value = cajaDeSucursal
+        selectedEmployee.sucursal_id = formCaja.value.sucursal_id // Guardar sucursal para usarla en cotizaciones
+      }
+      trabajadorAsignado.value = selectedEmployee
+      mostrarAbrirCaja.value = false
+      formCaja.value = { name: '', saldo_inicial: 0, cajero_id: null, pin_caja: '', sucursal_id: null }
+      mostrarPin.value = false
+      await cargarProductos()
+      useAlert().showToast(esCajero.value ? '¡Turno retomado exitosamente!' : `¡Sesión iniciada como ${selectedEmployee.name}!`, 'success')
+      return
+    } catch (e) {
+      await useAlert().showToast(e.response?.data?.error || 'PIN incorrecto o error al verificar.', 'error')
+      return
+    }
+  }
+
+  // SI ES CAJERO (Y NO TIENE CAJA ABIERTA): Se realiza la validación de Caja Física y Sucursal, y se abre turno en Backend
   if (usarDesgloseFondo.value) {
     formCaja.value.saldo_inicial = parseFloat(totalBreakdown.value)
   }
   if (!formCaja.value.name) {
-    await showAlert({ type: 'warning', title: 'Caja no seleccionada', message: 'Debes seleccionar una caja física antes de iniciar el turno.' })
-    return
-  }
-  if (!formCaja.value.cajero_id) {
-    await showAlert({ type: 'warning', title: 'Cajero no asignado', message: 'Selecciona un empleado responsable antes de continuar.' })
-    return
-  }
-  if (!formCaja.value.pin_caja) {
-    await showAlert({ type: 'warning', title: 'PIN Requerido', message: 'Debes ingresar el PIN de la caja para iniciar el turno.' })
+    await useAlert().showToast('Debes seleccionar una caja física.', 'warning')
     return
   }
   try {
     const { data } = await api.post('/pos/cash-registers/', formCaja.value)
     cajaAbierta.value = data
+    trabajadorAsignado.value = selectedEmployee
     mostrarAbrirCaja.value = false
     formCaja.value = { name: '', saldo_inicial: 0, cajero_id: null, pin_caja: '', sucursal_id: null }
     mostrarPin.value = false
     await cargarProductos()
+    useAlert().showToast(`¡Turno Abierto!`, 'success')
   } catch (e) {
-    await showAlert({ type: 'error', title: 'Error al abrir caja', message: e.response?.data?.error || 'Ocurrió un error inesperado al intentar abrir la caja.' })
+    await useAlert().showToast(e.response?.data?.error || 'Ocurrió un error inesperado al intentar abrir la caja.', 'error')
   }
 }
 
@@ -1261,12 +1732,19 @@ async function cerrarCaja() {
     resumenCierre.value = data
     if (data.register.status === 'closed') {
       cajaAbierta.value = null
+      trabajadorAsignado.value = null
       products.value = []
       mostrarCerrarCaja.value = false
     }
   } catch (e) {
     await showAlert({ type: 'error', title: 'Error al cerrar caja', message: e.response?.data?.error || 'Ocurrió un error inesperado al intentar cerrar la caja.' })
   }
+}
+
+function cerrarSesionVendedor() {
+  trabajadorAsignado.value = null
+  limpiarDespuesDeVenta()
+  useAlert().showToast('Sesión cerrada correctamente', 'success')
 }
 
 async function cobrar() {
@@ -1277,19 +1755,29 @@ async function cobrar() {
       ? (parseFloat(montoRecibido.value) || parseFloat(total.value))
       : parseFloat(total.value)
       
-    // Determine payment form based on method name roughly
-    let paymentForm = '01' // Cash by default
+    let paymentForm = '01'
     const mName = (metodoActual.value && metodoActual.value.label) ? metodoActual.value.label.toLowerCase() : ''
     if (mName.includes('tarjeta') && mName.includes('credito')) paymentForm = '19'
     else if (mName.includes('tarjeta') && mName.includes('debito')) paymentForm = '16'
     else if (mName.includes('transferencia')) paymentForm = '20'
 
+    const vDescGlobal = valorDescuentoGlobal.value;
+    const vSubtotalBruto = parseFloat(subtotalBruto.value) || 1;
+    
+    const finalCustomerId = (clienteForm.value.id === 1 && clienteForm.value.identification !== '9999999999999') ? null : (clienteForm.value.id || null);
+    
     const payload = {
       items: carrito.value.map(i => {
         const tIva = parseFloat(i.tarifa_iva || parametrosStore.obtener('ventas', 'iva', '15')) / 100
+        const subI = parseFloat(subtotalItem(i))
+        const pDesc = (subI / vSubtotalBruto) * vDescGlobal;
+        const itemBase = i.quantity * i.unit_price;
+        const finalDiscountPerc = ((i.discount || 0) + (pDesc / itemBase) * 100).toFixed(2);
+        
         return {
           ...i,
           unit_price: i.unit_price / (1 + tIva),
+          discount: Math.min(100, finalDiscountPerc),
           codigo_principal: i.code || '',
           tarifa_iva: i.tarifa_iva || parametrosStore.obtener('ventas', 'iva', '15')
         }
@@ -1299,7 +1787,7 @@ async function cobrar() {
       update_customer: updateCustomer.value,
       reference_number: (metodoActual.value && metodoActual.value.requires_reference) ? nroComprobante.value : null,
       customer: {
-        customer_id: clienteForm.value.id || null,
+        customer_id: finalCustomerId,
         name: clienteForm.value.name || 'CONSUMIDOR FINAL',
         identifier: clienteForm.value.identification || '9999999999999',
         id_type: clienteForm.value.tipo_id || '07',
@@ -1308,7 +1796,10 @@ async function cobrar() {
         payment_form: paymentForm,
         payment_term: 0,
         payment_time: 'dias'
-      }
+      },
+      quotation_id: ordenPendienteId.value,
+      seller_id: trabajadorAsignado.value ? trabajadorAsignado.value.id : null,
+      document_type: tipoDocumento.value
     }
     const { data } = await api.post(`/pos/cash-registers/${cajaAbierta.value.id}/sales/`, payload)
     ticketVenta.value = {
@@ -1331,7 +1822,7 @@ async function cobrar() {
     clienteForm.value = { name: 'CONSUMIDOR FINAL', identification: '9999999999999', tipo_id: '07', email: '' }
     busquedaCliente.value = ''
   } catch (e) {
-    errorVenta.value = e.response?.data?.error || 'Error al procesar sale'
+    errorVenta.value = e.response?.data?.error || e.message || 'Error al procesar sale'
   } finally {
     procesando.value = false
   }
@@ -1357,7 +1848,8 @@ async function procesarVentaFactura(modalPayload) {
         email: modalPayload.form.cliente_email,
         payment_form: modalPayload.form.forma_pago,
         address: modalPayload.form.cliente_direccion
-      }
+      },
+      seller_id: trabajadorAsignado.value ? trabajadorAsignado.value.id : null
     }
 
     const { data } = await api.post(`/pos/cash-registers/${cajaAbierta.value.id}/sales/`, payload)
@@ -1386,7 +1878,7 @@ async function procesarVentaFactura(modalPayload) {
     clienteForm.value = { name: 'CONSUMIDOR FINAL', identification: '9999999999999', tipo_id: '07', email: '' }
     busquedaCliente.value = ''
   } catch (e) {
-    errorVenta.value = e.response?.data?.error || 'Error al procesar venta y factura'
+    errorVenta.value = e.response?.data?.error || e.message || 'Error al procesar venta y factura'
   } finally {
     procesando.value = false
   }
@@ -1394,7 +1886,7 @@ async function procesarVentaFactura(modalPayload) {
 
 const handleGlobalKeydown = (e) => {
   if (e.key === 'Escape') {
-    if (mostrarAbrirCaja.value) mostrarAbrirCaja.value = false
+    if (mostrarAbrirCaja.value && canCloseModal.value) mostrarAbrirCaja.value = false
     if (mostrarCerrarCaja.value) mostrarCerrarCaja.value = false
     if (showModernPaymentModal.value) showModernPaymentModal.value = false
     if (showReceiptModal.value) showReceiptModal.value = false
@@ -1406,6 +1898,7 @@ const handleGlobalKeydown = (e) => {
     if (e.key === 'F4') {
       e.preventDefault()
       if (cajaAbierta.value) openPaymentModal()
+      else guardarPreFactura(true)
     }
     if (e.key === 'F2') {
       e.preventDefault()
@@ -1416,16 +1909,34 @@ const handleGlobalKeydown = (e) => {
 
 onMounted(async () => {
   window.addEventListener('keydown', handleGlobalKeydown)
+  window.addEventListener('keypress', handleGlobalKeypress)
   cargandoPOS.value = true
   try {
     const { data } = await api.get('/pos/cash-registers/')
-    cajaAbierta.value = data.find(c => c.status === 'open') || null
+    cajasAbiertasTotales.value = data.filter(c => c.status === 'open')
+    // Nota: Ya no asignamos cajaAbierta.value automáticamente aquí
+    // para evitar que un usuario al refrescar asuma la caja de otro usuario.
+    // Deben ingresar su PIN en "Asignar Trabajador" para retomarla.
+  } catch {}
+  
+  try {
+    const { data } = await api.get('/tenant/features/')
+    tenantFeatures.value = data
   } catch {}
 
-  if (cajaAbierta.value) {
-    await cargarProductos()
-  }
+  await parametrosStore.cargar()
 
+  if (trabajadorAsignado.value) {
+    if (esCajero.value) {
+      cajaAbierta.value = cajasAbiertasTotales.value.find(c => Number(c.user_id) === Number(trabajadorAsignado.value.id)) || null
+    } else {
+      cajaAbierta.value = cajasAbiertasTotales.value.find(c => Number(c.branch_id) === Number(trabajadorAsignado.value.sucursal_id)) || null
+    }
+  } else {
+    mostrarAbrirCaja.value = true
+  }
+  await cargarProductos()
+  
   try {
     const { data: bData } = await api.get('/inventario/branches/')
     sucursales.value = bData
@@ -1443,13 +1954,14 @@ onMounted(async () => {
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleGlobalKeydown)
+  window.removeEventListener('keypress', handleGlobalKeypress)
 })
 // ==========================================
 // Historial de Ventas Turno Actual
 // ==========================================
 const abrirHistorial = async () => {
   if (!cajaAbierta.value) {
-    showAlert('Error', 'Debe abrir un turno de caja primero', 'error');
+    showAlert({ type: 'error', title: 'Error', message: 'Debe abrir un turno de caja primero' });
     return;
   }
   mostrarHistorialModal.value = true;
@@ -1459,7 +1971,7 @@ const abrirHistorial = async () => {
     ventasTurno.value = data;
   } catch (error) {
     console.error("Error al cargar historial del turno:", error);
-    showAlert('Error', 'No se pudo cargar el historial de ventas', 'error');
+    showAlert({ type: 'error', title: 'Error', message: 'No se pudo cargar el historial de ventas' });
   } finally {
     cargandoHistorial.value = false;
   }

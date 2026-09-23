@@ -1,6 +1,10 @@
 <template>
   <div>
-    <h1 class="page-title">Pedidos</h1>
+    <div class="page-header">
+      <div>
+      <h1 class="page-title">Pedidos</h1>
+      </div>
+    </div>
     <div class="card">
       <table class="table">
         <thead>

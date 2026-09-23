@@ -63,8 +63,8 @@
         </div>
 
         <nav class="sidebar-nav">
-          <!-- PRINCIPAL (Solo admin/otras áreas, oculto para vendedores) -->
-          <template v-if="authStore.rol !== 'vendedor'">
+          <!-- PRINCIPAL -->
+          <template v-if="authStore.tienePermiso('reportes.*') || authStore.tienePermiso('admin.*')">
             <button @click="collapsedSections.principal = !collapsedSections.principal" class="nav-section-label w-full text-left flex justify-between items-center cursor-pointer hover:text-white transition-colors bg-transparent border-none">
               <span>Principal</span>
               <i class="fa-solid fa-chevron-down text-[10px] transition-transform duration-200 opacity-60" :class="{'rotate-180': collapsedSections.principal, 'hidden': isSidebarCollapsed}"></i>
@@ -77,150 +77,270 @@
             </div>
           </template>
 
-          <!-- VENTAS (Oculto para vendedores) -->
-          <template v-if="tenantStore.tieneModulo('ventas') && authStore.rol !== 'vendedor'">
+          <!-- VENTAS -->
+          <template v-if="tenantStore.tieneModulo('ventas') && authStore.tieneAlgunPermiso('ventas')">
             <button @click="collapsedSections.ventas = !collapsedSections.ventas" class="nav-section-label w-full text-left flex justify-between items-center cursor-pointer hover:text-white transition-colors bg-transparent border-none">
               <span>Ventas</span>
               <i class="fa-solid fa-chevron-down text-[10px] transition-transform duration-200 opacity-60" :class="{'rotate-180': collapsedSections.ventas, 'hidden': isSidebarCollapsed}"></i>
             </button>
             <div v-if="!collapsedSections.ventas">
-              <router-link to="/ventas/customers" class="nav-item">
+              <router-link v-if="authStore.tienePermiso('ventas.clientes')" to="/ventas/customers" class="nav-item">
                 <span class="nav-icon">🤝</span>
                 <span class="nav-label">Clientes</span>
               </router-link>
-              <router-link to="/ventas/quotations" class="nav-item">
+              <router-link v-if="authStore.tienePermiso('ventas.cotizaciones')" to="/ventas/quotations" class="nav-item">
                 <span class="nav-icon">📋</span>
                 <span class="nav-label">Cotizaciones</span>
               </router-link>
-              <router-link to="/ventas/orders" class="nav-item">
+              <router-link v-if="authStore.tienePermiso('ventas.pedidos')" to="/ventas/orders" class="nav-item">
                 <span class="nav-icon">🛒</span>
                 <span class="nav-label">Pedidos</span>
               </router-link>
-              <router-link to="/ventas/payment-methods" class="nav-item">
+              <router-link v-if="authStore.tienePermiso('ventas.cuentas_cobrar')" to="/ventas/receivables" class="nav-item">
+                <span class="nav-icon">💰</span>
+                <span class="nav-label">Cuentas por Cobrar</span>
+              </router-link>
+              <router-link v-if="authStore.tienePermiso('ventas.metodos_pago')" to="/ventas/payment-methods" class="nav-item">
                 <span class="nav-icon">💳</span>
                 <span class="nav-label">Métodos de Pago</span>
               </router-link>
             </div>
           </template>
 
-          <!-- FACTURACIÓN (Oculto para vendedores) -->
-          <template v-if="tenantStore.tieneModulo('facturacion') && authStore.rol !== 'vendedor'">
+          <!-- FACTURACIÓN -->
+          <template v-if="tenantStore.tieneModulo('facturacion') && authStore.tieneAlgunPermiso('facturacion')">
             <button @click="collapsedSections.facturacion = !collapsedSections.facturacion" class="nav-section-label w-full text-left flex justify-between items-center cursor-pointer hover:text-white transition-colors bg-transparent border-none">
               <span>Facturación</span>
               <i class="fa-solid fa-chevron-down text-[10px] transition-transform duration-200 opacity-60" :class="{'rotate-180': collapsedSections.facturacion, 'hidden': isSidebarCollapsed}"></i>
             </button>
             <div v-if="!collapsedSections.facturacion">
-              <router-link to="/facturacion" class="nav-item">
+              <router-link v-if="authStore.tienePermiso('facturacion.facturas') || authStore.tienePermiso('facturacion.*')" to="/facturacion" class="nav-item">
                 <span class="nav-icon">🧾</span>
                 <span class="nav-label">Facturas</span>
+              </router-link>
+              <router-link v-if="authStore.tienePermiso('facturacion.notas_credito') || authStore.tienePermiso('facturacion.*')" to="/facturacion/notas-credito" class="nav-item">
+                <span class="nav-icon">↩️</span>
+                <span class="nav-label">Notas de Crédito</span>
               </router-link>
             </div>
           </template>
 
-          <!-- INVENTARIO / CATÁLOGO (Oculto para vendedores) -->
-          <template v-if="(tenantStore.tieneModulo('inventario') || tenantStore.tieneModulo('pos')) && authStore.rol !== 'vendedor'">
+          <!-- FISCAL / SRI -->
+          <template v-if="tenantStore.tieneModulo('accounting') && authStore.tieneAlgunPermiso('accounting')">
+            <button @click="collapsedSections.accounting = !collapsedSections.accounting" class="nav-section-label w-full text-left flex justify-between items-center cursor-pointer hover:text-white transition-colors bg-transparent border-none">
+              <span>Fiscal / SRI</span>
+              <i class="fa-solid fa-chevron-down text-[10px] transition-transform duration-200 opacity-60" :class="{'rotate-180': collapsedSections.accounting, 'hidden': isSidebarCollapsed}"></i>
+            </button>
+            <div v-if="!collapsedSections.accounting">
+              <router-link v-if="authStore.tienePermiso('accounting.inbox') || authStore.tienePermiso('accounting.*')" to="/sri/inbox" class="nav-item">
+                <span class="nav-icon">📥</span>
+                <span class="nav-label">Bandeja SRI</span>
+              </router-link>
+              <router-link v-if="authStore.tienePermiso('accounting.taxforms') || authStore.tienePermiso('accounting.*')" to="/sri/tax-forms" class="nav-item">
+                <span class="nav-icon">📊</span>
+                <span class="nav-label">Declaraciones</span>
+              </router-link>
+            </div>
+          </template>
+
+          <!-- NOTAS DE VENTA -->
+          <template v-if="tenantStore.tieneModulo('notas_venta') && authStore.tieneAlgunPermiso('notas_venta')">
+            <button @click="collapsedSections.notas_venta = !collapsedSections.notas_venta" class="nav-section-label w-full text-left flex justify-between items-center cursor-pointer hover:text-white transition-colors bg-transparent border-none">
+              <span>Notas de Venta</span>
+              <i class="fa-solid fa-chevron-down text-[10px] transition-transform duration-200 opacity-60" :class="{'rotate-180': collapsedSections.notas_venta, 'hidden': isSidebarCollapsed}"></i>
+            </button>
+            <div v-if="!collapsedSections.notas_venta">
+              <router-link v-if="authStore.tienePermiso('notas_venta.ver') || authStore.tienePermiso('notas_venta.*')" to="/notas-venta" class="nav-item">
+                <span class="nav-icon">📝</span>
+                <span class="nav-label">Emitir / Ver Notas</span>
+              </router-link>
+            </div>
+          </template>
+
+          <!-- INVENTARIO / CATÁLOGO -->
+          <template v-if="(tenantStore.tieneModulo('inventario') || tenantStore.tieneModulo('pos')) && authStore.tieneAlgunPermiso('inventario')">
             <button @click="collapsedSections.inventario = !collapsedSections.inventario" class="nav-section-label w-full text-left flex justify-between items-center cursor-pointer hover:text-white transition-colors bg-transparent border-none">
               <span>Inventario / Catálogo</span>
               <i class="fa-solid fa-chevron-down text-[10px] transition-transform duration-200 opacity-60" :class="{'rotate-180': collapsedSections.inventario, 'hidden': isSidebarCollapsed}"></i>
             </button>
             <div v-if="!collapsedSections.inventario">
-              <router-link to="/inventory" class="nav-item">
+              <router-link v-if="authStore.tienePermiso('inventario.productos')" to="/inventory" class="nav-item">
                 <span class="nav-icon">🏭</span>
                 <span class="nav-label">Productos</span>
               </router-link>
-              <router-link v-if="tenantStore.tieneModulo('inventario')" to="/inventario/cotizador" class="nav-item">
-                <span class="nav-icon">🧮</span>
+
+              <router-link v-if="tenantStore.tieneModulo('inventario') && authStore.tienePermiso('inventario.cotizador')" to="/inventario/cotizador" class="nav-item">
+                <span class="nav-icon">💵</span>
                 <span class="nav-label">Cotizador</span>
+              </router-link>
+
+              <router-link v-if="tenantStore.tieneModulo('inventario') && authStore.tienePermiso('inventario.productos')" to="/inventario/transferencias" class="nav-item">
+                <span class="nav-icon">🚚</span>
+                <span class="nav-label">Traspasos / Bodega</span>
               </router-link>
             </div>
           </template>
 
-          <!-- RECURSOS HUMANOS (Oculto para vendedores) -->
-          <template v-if="tenantStore.tieneModulo('rrhh') && authStore.rol !== 'vendedor'">
+          <!-- SERVICIO TÉCNICO -->
+          <template v-if="tenantStore.tieneModulo('technical_service') && authStore.tieneAlgunPermiso('technical_service')">
+            <button @click="collapsedSections.technical_service = !collapsedSections.technical_service" class="nav-section-label w-full text-left flex justify-between items-center cursor-pointer hover:text-white transition-colors bg-transparent border-none">
+              <span>Servicio Técnico</span>
+              <i class="fa-solid fa-chevron-down text-[10px] transition-transform duration-200 opacity-60" :class="{'rotate-180': collapsedSections.technical_service, 'hidden': isSidebarCollapsed}"></i>
+            </button>
+            <div v-if="!collapsedSections.technical_service">
+              <router-link v-if="authStore.tienePermiso('technical_service.orders')" to="/technical-service/orders" class="nav-item">
+                <span class="nav-icon">🔧</span>
+                <span class="nav-label">Órdenes de Trabajo</span>
+              </router-link>
+            </div>
+          </template>
+
+          <!-- RECURSOS HUMANOS -->
+          <template v-if="tenantStore.tieneModulo('rrhh') && authStore.tieneAlgunPermiso('rrhh')">
             <button @click="collapsedSections.rrhh = !collapsedSections.rrhh" class="nav-section-label w-full text-left flex justify-between items-center cursor-pointer hover:text-white transition-colors bg-transparent border-none">
               <span>Recursos Humanos</span>
               <i class="fa-solid fa-chevron-down text-[10px] transition-transform duration-200 opacity-60" :class="{'rotate-180': collapsedSections.rrhh, 'hidden': isSidebarCollapsed}"></i>
             </button>
             <div v-if="!collapsedSections.rrhh">
-              <router-link to="/rrhh/employees" class="nav-item">
+              <router-link v-if="authStore.tienePermiso('rrhh.empleados')" to="/rrhh/employees" class="nav-item">
                 <span class="nav-icon">👥</span>
                 <span class="nav-label">Empleados</span>
               </router-link>
-              <router-link to="/rrhh/nominas" class="nav-item">
+              <router-link v-if="authStore.tienePermiso('rrhh.nominas')" to="/rrhh/nominas" class="nav-item">
                 <span class="nav-icon">💰</span>
                 <span class="nav-label">Nóminas</span>
               </router-link>
             </div>
           </template>
 
-          <!-- PUNTO DE VENTA (Siempre visible si tiene POS, pero control-local oculto para vendedores) -->
-          <template v-if="tenantStore.tieneModulo('pos')">
+          <!-- PUNTO DE VENTA -->
+          <template v-if="tenantStore.tieneModulo('pos') && (authStore.tieneAlgunPermiso('pos') || authStore.tienePermiso('ventas.pos') || authStore.tienePermiso('ventas.*'))">
             <button @click="collapsedSections.pos = !collapsedSections.pos" class="nav-section-label w-full text-left flex justify-between items-center cursor-pointer hover:text-white transition-colors bg-transparent border-none">
               <span>Punto de Venta</span>
               <i class="fa-solid fa-chevron-down text-[10px] transition-transform duration-200 opacity-60" :class="{'rotate-180': collapsedSections.pos, 'hidden': isSidebarCollapsed}"></i>
             </button>
             <div v-if="!collapsedSections.pos">
-              <router-link to="/pos" class="nav-item">
+              <router-link v-if="authStore.tienePermiso('ventas.pos') || authStore.tienePermiso('ventas.*') || authStore.tienePermiso('pos.*')" to="/pos" class="nav-item">
                 <span class="nav-icon">🖥️</span>
                 <span class="nav-label">POS</span>
               </router-link>
-              <router-link v-if="authStore.rol !== 'vendedor'" to="/pos/control-local" class="nav-item">
+              <router-link v-if="authStore.tienePermiso('pos.control_local')" to="/pos/control-local" class="nav-item">
                 <span class="nav-icon">🏢</span>
                 <span class="nav-label">Control de Local</span>
               </router-link>
             </div>
           </template>
 
-          <!-- SISTEMA (Oculto reportes y config para vendedores, se agrega Usuarios para admins) -->
-          <button @click="collapsedSections.sistema = !collapsedSections.sistema" class="nav-section-label w-full text-left flex justify-between items-center cursor-pointer hover:text-white transition-colors bg-transparent border-none">
+          <!-- CONTABILIDAD -->
+          <template v-if="tenantStore.tieneModulo('contabilidad') && authStore.tieneAlgunPermiso('contabilidad')">
+            <button @click="collapsedSections.contabilidad = !collapsedSections.contabilidad" class="nav-section-label w-full text-left flex justify-between items-center cursor-pointer hover:text-white transition-colors bg-transparent border-none">
+              <span>Contabilidad</span>
+              <i class="fa-solid fa-chevron-down text-[10px] transition-transform duration-200 opacity-60" :class="{'rotate-180': collapsedSections.contabilidad, 'hidden': isSidebarCollapsed}"></i>
+            </button>
+            <div v-if="!collapsedSections.contabilidad">
+              <router-link v-if="authStore.tienePermiso('contabilidad.plan_cuentas')" to="/contabilidad/plan-cuentas" class="nav-item">
+                <span class="nav-icon">📖</span>
+                <span class="nav-label">Plan de Cuentas</span>
+              </router-link>
+              <router-link v-if="authStore.tienePermiso('contabilidad.libro_diario')" to="/contabilidad/libro-diario" class="nav-item">
+                <span class="nav-icon">📓</span>
+                <span class="nav-label">Libro Diario</span>
+              </router-link>
+              <router-link v-if="authStore.tienePermiso('contabilidad.libro_mayor')" to="/contabilidad/libro-mayor" class="nav-item">
+                <span class="nav-icon">📔</span>
+                <span class="nav-label">Libro Mayor</span>
+              </router-link>
+              <router-link v-if="authStore.tienePermiso('contabilidad.estados')" to="/contabilidad/estado-resultados" class="nav-item">
+                <span class="nav-icon">📉</span>
+                <span class="nav-label">Est. Resultados (P&L)</span>
+              </router-link>
+              <router-link v-if="authStore.tienePermiso('contabilidad.estados')" to="/contabilidad/balance-general" class="nav-item">
+                <span class="nav-icon">⚖️</span>
+                <span class="nav-label">Balance General</span>
+              </router-link>
+              <router-link v-if="tenantStore.tieneModulo('centros_costos') && authStore.tienePermiso('contabilidad.centros')" to="/contabilidad/centros-costos" class="nav-item">
+                <span class="nav-icon">🏢</span>
+                <span class="nav-label">Centros de Costos</span>
+              </router-link>
+            </div>
+          </template>
+
+          <!-- RESTAURANTES -->
+          <template v-if="tenantStore.tieneModulo('restaurantes') && authStore.tieneAlgunPermiso('restaurante')">
+            <button @click="collapsedSections.restaurantes = !collapsedSections.restaurantes" class="nav-section-label w-full text-left flex justify-between items-center cursor-pointer hover:text-white transition-colors bg-transparent border-none">
+              <span>Restaurantes</span>
+              <i class="fa-solid fa-chevron-down text-[10px] transition-transform duration-200 opacity-60" :class="{'rotate-180': collapsedSections.restaurantes, 'hidden': isSidebarCollapsed}"></i>
+            </button>
+            <div v-if="!collapsedSections.restaurantes">
+              <router-link v-if="authStore.tienePermiso('restaurante.mesas')" to="/restaurante/mesas" class="nav-item">
+                <span class="nav-icon">🍔</span>
+                <span class="nav-label">Mapa de Mesas</span>
+              </router-link>
+              <router-link v-if="authStore.tienePermiso('restaurante.cocina')" to="/restaurante/cocina" class="nav-item">
+                <span class="nav-icon">🔥</span>
+                <span class="nav-label">KDS Cocina</span>
+              </router-link>
+            </div>
+          </template>
+
+          <!-- SISTEMA -->
+          <button v-if="authStore.tieneAlgunPermiso('reportes') || authStore.tieneAlgunPermiso('admin') || authStore.tienePermiso('usuarios.gestion') || authStore.tienePermiso('usuarios.roles') || authStore.tienePermiso('parametros.configuracion')" @click="collapsedSections.sistema = !collapsedSections.sistema" class="nav-section-label w-full text-left flex justify-between items-center cursor-pointer hover:text-white transition-colors bg-transparent border-none">
             <span>Sistema</span>
             <i class="fa-solid fa-chevron-down text-[10px] transition-transform duration-200 opacity-60" :class="{'rotate-180': collapsedSections.sistema, 'hidden': isSidebarCollapsed}"></i>
           </button>
           <div v-if="!collapsedSections.sistema">
-            <template v-if="authStore.rol !== 'vendedor'">
+            <template v-if="authStore.tienePermiso('reportes.*') || authStore.tienePermiso('reportes.ver') || authStore.tienePermiso('admin.*')">
               <router-link to="/reportes" class="nav-item">
                 <span class="nav-icon">📈</span>
                 <span class="nav-label">Reportes</span>
               </router-link>
-              <router-link to="/parametros" class="nav-item">
-                <span class="nav-icon">⚙️</span>
-                <span class="nav-label">Configuración</span>
-              </router-link>
             </template>
-            <router-link v-if="authStore.rol === 'admin' || authStore.rol === 'superadmin'" to="/usuarios" class="nav-item">
+            <router-link v-if="authStore.tienePermiso('parametros.configuracion') || authStore.tienePermiso('admin.*')" to="/parametros" class="nav-item">
+              <span class="nav-icon">⚙️</span>
+              <span class="nav-label">Configuración</span>
+            </router-link>
+            <router-link v-if="tenantStore.tieneModulo('usuarios') && (authStore.tienePermiso('usuarios.gestion') || authStore.tienePermiso('admin.*'))" to="/usuarios" class="nav-item">
               <span class="nav-icon">👥</span>
               <span class="nav-label">Gestión Usuarios</span>
             </router-link>
+            <router-link v-if="tenantStore.tieneModulo('auditoria') && (authStore.tienePermiso('reportes.auditoria') || authStore.tienePermiso('admin.*'))" to="/auditoria" class="nav-item">
+              <span class="nav-icon">🛡️</span>
+              <span class="nav-label">Auditoría Inmutable</span>
+            </router-link>
+            <router-link v-if="tenantStore.tieneModulo('roles') && (authStore.tienePermiso('usuarios.roles') || authStore.tienePermiso('admin.*'))" to="/roles" class="nav-item">
+              <span class="nav-icon">🔐</span>
+              <span class="nav-label">Roles Dinámicos</span>
+            </router-link>
           </div>
 
-          <!-- CLÍNICA (Oculto para vendedores) -->
-          <template v-if="tenantStore.tieneModulo('clinica') && authStore.rol !== 'vendedor'">
+          <!-- CLÍNICA -->
+          <template v-if="tenantStore.tieneModulo('clinica') && authStore.tieneAlgunPermiso('clinica')">
             <button @click="collapsedSections.clinica = !collapsedSections.clinica" class="nav-section-label w-full text-left flex justify-between items-center cursor-pointer hover:text-white transition-colors bg-transparent border-none">
-              <span>Clínica</span>
+              <span>Gestión Médica</span>
               <i class="fa-solid fa-chevron-down text-[10px] transition-transform duration-200 opacity-60" :class="{'rotate-180': collapsedSections.clinica, 'hidden': isSidebarCollapsed}"></i>
             </button>
             <div v-if="!collapsedSections.clinica">
-              <router-link to="/clinica/patients" class="nav-item">
-                <span class="nav-icon">🏥</span>
+              <router-link v-if="authStore.tienePermiso('clinica.pacientes')" to="/clinica/pacientes" class="nav-item">
+                <span class="nav-icon">🧑‍⚕️</span>
                 <span class="nav-label">Pacientes</span>
               </router-link>
-              <router-link to="/clinica/doctors" class="nav-item">
-                <span class="nav-icon">👨‍⚕️</span>
+              <router-link v-if="authStore.tienePermiso('clinica.citas')" to="/clinica/citas" class="nav-item">
+                <span class="nav-icon">📅</span>
+                <span class="nav-label">Citas Médicas</span>
+              </router-link>
+              <router-link v-if="authStore.tienePermiso('clinica.medicos')" to="/clinica/medicos" class="nav-item">
+                <span class="nav-icon">🩺</span>
                 <span class="nav-label">Médicos</span>
               </router-link>
-              <router-link to="/clinica/appointments" class="nav-item">
-                <span class="nav-icon">📅</span>
-                <span class="nav-label">Citas</span>
-              </router-link>
-              <router-link to="/clinica/examenes" class="nav-item">
+              <router-link v-if="authStore.tienePermiso('clinica.examenes')" to="/clinica/examenes" class="nav-item">
                 <span class="nav-icon">🔬</span>
-                <span class="nav-label">Laboratorio</span>
+                <span class="nav-label">Exámenes</span>
               </router-link>
             </div>
           </template>
 
           <!-- SUPERADMIN -->
-          <template v-if="authStore.rol === 'superadmin'">
+          <template v-if="authStore.esSuperAdmin">
             <button @click="collapsedSections.admin = !collapsedSections.admin" class="nav-section-label w-full text-left flex justify-between items-center cursor-pointer hover:text-white transition-colors bg-transparent border-none">
               <span>Administración</span>
               <i class="fa-solid fa-chevron-down text-[10px] transition-transform duration-200 opacity-60" :class="{'rotate-180': collapsedSections.admin, 'hidden': isSidebarCollapsed}"></i>
@@ -239,7 +359,7 @@
             <div class="user-avatar">{{ iniciales }}</div>
             <div class="user-details">
               <span class="user-name">{{ authStore.usuario?.name }}</span>
-              <span class="user-role">{{ authStore.usuario?.rol }}</span>
+              <span class="user-role">{{ authStore.displayRole }}</span>
             </div>
           </div>
           <button @click="authStore.logout()" class="btn-logout" title="Cerrar sesión">
@@ -272,16 +392,25 @@ const route = useRoute()
 
 const isSidebarOpen = ref(false)
 const isSidebarCollapsed = ref(localStorage.getItem('sidebar_collapsed') === 'true')
-const collapsedSections = reactive({
+const collapsedSections = reactive(JSON.parse(localStorage.getItem('collapsedSections')) || {
   principal: false,
-  ventas: false,
-  facturacion: false,
-  inventario: false,
-  rrhh: false,
-  pos: false,
-  sistema: false,
-  clinica: false,
-  admin: false
+  ventas: true,
+  facturacion: true,
+  accounting: true,
+  notas_venta: true,
+  inventario: true,
+  rrhh: true,
+  pos: true,
+  clinica: true,
+  sistema: true,
+  admin: true,
+  technical_service: true,
+  contabilidad: true,
+  restaurantes: true
+})
+
+watch(collapsedSections, (newVal) => {
+  localStorage.setItem('collapsedSections', JSON.stringify(newVal))
 })
 
 function toggleSidebarCollapse() {
@@ -319,26 +448,39 @@ onMounted(async () => {
 <style>
 /* ── Variables ─────────────────────────────────────────────── */
 :root {
-  --color-primario:   #4F46E5;
-  --color-primario-dark: #3730A3;
-  --color-primario-light: #EEF2FF;
-  --color-acento:     #06B6D4;
-  --color-exito:      #10B981;
-  --color-alerta:     #F59E0B;
-  --color-peligro:    #EF4444;
-  --sidebar-width:    260px;
-  --bg:               #FFFFFF;
-  --card-bg:          #FFFFFF;
-  --text:             #1E293B;
-  --text-muted:       #94A3B8;
-  --text-light:       #CBD5E1;
-  --border:           #E2E8F0;
-  --radius:           12px;
-  --radius-sm:        8px;
-  --shadow:           0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
-  --shadow-md:        0 4px 6px rgba(0,0,0,0.05), 0 2px 4px rgba(0,0,0,0.04);
-  --shadow-lg:        0 10px 15px rgba(0,0,0,0.08), 0 4px 6px rgba(0,0,0,0.04);
-  --transition:       all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  /* Paleta Principal */
+  --color-primario:        #2563EB; /* Azul */
+  --color-primario-dark:   #1D4ED8; /* Azul intenso (hover) */
+  --color-primario-light:  #F1F5F9; /* Fondo secundario / Hover suave */
+  --color-acento:          #14B8A6; /* Turquesa */
+  --color-navy:            #0F172A; /* Principal oscuro */
+  
+  /* Estados (Éxito, Alerta, Peligro, Info) */
+  --color-exito:           #22C55E;
+  --color-exito-light:     #DCFCE7;
+  --color-alerta:          #F59E0B;
+  --color-alerta-light:    #FEF3C7;
+  --color-peligro:         #EF4444;
+  --color-peligro-light:   #FEE2E2;
+  --color-info:            #8B5CF6;
+  --color-info-light:      #DBEAFE;
+  
+  /* Estructura y Textos */
+  --sidebar-width:         260px;
+  --bg:                    #F8FAFC; /* Fondo general */
+  --card-bg:               #FFFFFF; /* Fondo tarjetas */
+  --text:                  #0F172A; /* Texto principal */
+  --text-muted:            #64748B; /* Texto secundario */
+  --text-light:            #CBD5E1; /* Texto para fondos oscuros */
+  --border:                #E2E8F0; /* Bordes */
+  
+  /* UI Global (Sombras, bordes, transiciones) */
+  --radius:                12px;
+  --radius-sm:             8px;
+  --shadow:                0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md:             0 4px 6px rgba(0,0,0,0.05), 0 2px 4px rgba(0,0,0,0.04);
+  --shadow-lg:             0 10px 15px rgba(0,0,0,0.08), 0 4px 6px rgba(0,0,0,0.04);
+  --transition:            all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -552,9 +694,14 @@ body {
 .main-content { flex: 1; overflow-y: auto; padding: 2rem; }
 
 /* ── Componentes globales ──────────────────────────────────── */
-.page-header {
+.page-header, .header-actions {
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 1.75rem;
+  background: var(--card-bg);
+  padding: 1.25rem 1.5rem;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
 }
 .page-title {
   font-size: 1.5rem; font-weight: 800;
@@ -697,7 +844,7 @@ body {
 .modal {
   background: white; border-radius: var(--radius);
   box-shadow: var(--shadow-lg);
-  padding: 2rem; width: 100%; max-width: 560px;
+  padding: 2rem; width: 100%; max-width: 850px;
   max-height: 90vh; overflow-y: auto;
   animation: slideUp 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }

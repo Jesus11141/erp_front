@@ -1,9 +1,13 @@
 <template>
   <div>
-    <h1 class="page-title">Parametrización</h1>
-    <p style="color:var(--text-muted); margin-bottom:1.5rem; font-size:0.9rem;">
-      Configura el comportamiento del sistema para tu company. Los cambios aplican de inmediato.
-    </p>
+    <div class="page-header">
+      <div>
+      <h1 class="page-title">Parametrización</h1>
+      <p style="color:var(--text-muted); margin-bottom:1.5rem; font-size:0.9rem;">
+        Configura el comportamiento del sistema para tu company. Los cambios aplican de inmediato.
+      </p>
+      </div>
+    </div>
 
     <div v-if="cargando" class="spinner" style="margin:2rem auto;"></div>
 
@@ -140,6 +144,43 @@
               <span v-if="firmaOk" style="color:var(--color-exito); font-size:0.8rem;">✓ Archivo subido con éxito</span>
             </div>
 
+            <!-- Lista de items (separados por coma en backend, presentados como chips) -->
+            <div v-else-if="info.type === 'list'" style="display: flex; flex-direction: column; gap: 0.5rem;">
+              <div style="display: flex; gap: 0.5rem;">
+                <input
+                  type="text"
+                  class="input"
+                  style="flex: 1;"
+                  placeholder="Agregar nuevo ítem..."
+                  @keydown.enter.prevent="agregarItemLista(clave, $event.target)"
+                />
+                <button 
+                  type="button" 
+                  class="btn btn-primary" 
+                  style="padding: 0 0.75rem; font-weight: bold; font-size: 1.25rem;"
+                  @click="agregarItemLista(clave, $event.target.previousElementSibling)"
+                >
+                  +
+                </button>
+              </div>
+              <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; max-height: 150px; overflow-y: auto; padding: 0.5rem; background: #f8fafc; border-radius: 8px; border: 1px solid var(--border);">
+                <div 
+                  v-for="(item, idx) in obtenerItemsLista(info.value)" 
+                  :key="idx"
+                  style="background: white; border: 1px solid var(--border); border-radius: 16px; padding: 0.25rem 0.75rem; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"
+                >
+                  <span>{{ item }}</span>
+                  <span 
+                    @click="removerItemLista(clave, info.value, idx)" 
+                    style="color: red; cursor: pointer; font-weight: bold; font-size: 1rem;"
+                  >×</span>
+                </div>
+                <div v-if="!info.value" style="color: var(--text-muted); font-size: 0.8rem;">
+                  No hay elementos.
+                </div>
+              </div>
+            </div>
+
             <!-- Número -->
             <input
               v-else-if="info.type === 'number'"
@@ -265,6 +306,7 @@ const modulosDisponibles = computed(() => {
   if (tenantStore.tieneModulo('rrhh')) lista.push({ clave: 'rrhh', label: 'RRHH', icono: '👥' })
   if (tenantStore.tieneModulo('contabilidad')) lista.push({ clave: 'contabilidad', label: 'Contabilidad', icono: '📒' })
   if (tenantStore.tieneModulo('clinica')) lista.push({ clave: 'clinica', label: 'Clínica', icono: '🏥' })
+  if (tenantStore.tieneModulo('technical_service')) lista.push({ clave: 'technical_service', label: 'Servicio Técnico', icono: '🔧' })
   return lista
 })
 
@@ -371,6 +413,32 @@ function cambiarValor(clave, valor) {
   }
   cambios.value[moduloActivo.value][clave] = valor
   guardado.value = false
+}
+
+const obtenerItemsLista = (valor) => {
+  if (!valor) return []
+  return valor.split(',').map(s => s.trim()).filter(s => s)
+}
+
+const agregarItemLista = (clave, inputElement) => {
+  if (!inputElement || !inputElement.value.trim()) return
+  const item = inputElement.value.trim()
+  const currentVal = cambios.value[moduloActivo.value]?.[clave] !== undefined 
+      ? cambios.value[moduloActivo.value][clave] 
+      : parametros.value[moduloActivo.value]?.[clave]?.value
+  
+  const list = obtenerItemsLista(currentVal)
+  if (!list.includes(item)) {
+    list.push(item)
+    cambiarValor(clave, list.join(', '))
+  }
+  inputElement.value = ''
+}
+
+const removerItemLista = (clave, valorActual, idx) => {
+  const list = obtenerItemsLista(valorActual)
+  list.splice(idx, 1)
+  cambiarValor(clave, list.join(', '))
 }
 
 function restaurarDefaults() {

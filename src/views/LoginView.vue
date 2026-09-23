@@ -115,7 +115,7 @@ async function handleLogin() {
   cargando.value = true
   try {
     await authStore.login(form.value.email, form.value.password)
-    if (authStore.rol === 'vendedor') {
+    if (authStore.rol === 'vendedor' || authStore.rol === 'cajero') {
       router.push('/pos')
     } else {
       router.push('/dashboard')

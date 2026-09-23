@@ -1,7 +1,11 @@
 <template>
   <div>
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; gap: 0.5rem; flex-wrap: wrap;">
-      <h1 class="page-title" style="margin:0">Nóminas</h1>
+      <div class="page-header">
+        <div>
+        <h1 class="page-title" style="margin:0">Nóminas</h1>
+        </div>
+      </div>
       <div style="display:flex; gap:0.5rem;">
         <button class="btn btn-outline" @click="abrirGeneradorMasivo">⚡ Generación Masiva</button>
         <button class="btn btn-primary" @click="abrirGenerador">+ Generar Individual</button>

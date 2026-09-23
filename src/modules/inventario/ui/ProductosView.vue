@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+    <div class="page-header">
       <h1 class="page-title" style="margin:0">Productos</h1>
       <button class="btn btn-primary" @click="abrirNuevoProducto">+ Nuevo Producto</button>
     </div>
@@ -26,7 +26,13 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="p in products" :key="p.id">
+          <tr v-if="cargando">
+            <td colspan="10" style="padding: 0; border: none;">
+              <TableSkeleton :rows="6" :has-avatar="true" :has-badge="true" :has-actions="true" />
+            </td>
+          </tr>
+          <template v-else>
+            <tr v-for="p in products" :key="p.id">
             <td style="font-family:monospace; font-size:0.85rem;">{{ p.code }}</td>
             <td>
               <div style="display:flex; align-items:center; gap:0.5rem;">
@@ -68,11 +74,23 @@
             </td>
           </tr>
           <tr v-if="!products.length">
-            <td colspan="10" style="text-align:center; padding: 3rem; color: #94a3b8; font-size: 1.1rem;">
-              <span style="font-size: 3rem; display: block; margin-bottom: 1rem;">📦</span>
-              No se encontraron products
+            <td colspan="10" style="padding: 0; border: none;">
+              <EmptyState 
+                :icon="busqueda ? 'fa-solid fa-magnifying-glass' : 'fa-solid fa-box-open'"
+                :icon-color="busqueda ? 'text-amber-500' : 'text-brand-500'"
+                :icon-bg="busqueda ? 'bg-amber-50' : 'bg-brand-50'"
+                :title="busqueda ? 'Sin resultados para la búsqueda' : 'Aún no tienes productos registrados'"
+                :description="busqueda ? `No encontramos ningún artículo que coincida con '${busqueda}'. Revisa la ortografía o limpia el filtro.` : 'Crea tu catálogo de artículos o importa tus productos para comenzar a vender en el POS y controlar tu stock.'"
+                :action-text="busqueda ? '' : '+ Nuevo Producto'"
+                :secondary-action-text="busqueda ? 'Limpiar Búsqueda' : ''"
+                action-icon="fa-solid fa-plus"
+                secondary-action-icon="fa-solid fa-rotate-left"
+                @action="abrirNuevoProducto"
+                @secondary-action="limpiarBusqueda"
+              />
             </td>
           </tr>
+          </template>
         </tbody>
       </table>
       </div>
@@ -103,20 +121,20 @@
           </div>
           <div class="form-group"><label>Unidad</label>
             <select v-model="formProducto.unidad" class="input">
-              <option value="pza">Pieza</option>
-              <option value="kg">Kilogramo</option>
-              <option value="lt">Litro</option>
-              <option value="register">Caja</option>
-              <option value="m">Metro</option>
-              <option value="par">Par</option>
+              <option v-for="unidad in unidades_medida" :key="unidad" :value="unidad">
+                {{ unidad }}
+              </option>
+            </select>
+          </div>
+          <div class="form-group"><label>Categoría</label>
+            <select v-model="formProducto.category" class="input">
+              <option value="">-- Sin categoría --</option>
+              <option v-for="cat in categorias_productos" :key="cat" :value="cat">{{ cat }}</option>
             </select>
           </div>
           <div class="form-group"><label>Tarifa IVA</label>
             <select v-model="formProducto.tarifa_iva" class="input">
-              <option value="0">0%</option>
-              <option value="5">5%</option>
-              <option value="8">8%</option>
-              <option value="15">15%</option>
+              <option v-for="iva in tarifas_iva" :key="iva" :value="iva">{{ iva }}%</option>
             </select>
           </div>
           <div class="form-group" style="grid-column:1/-1"><label>Descripción</label>
@@ -146,7 +164,7 @@
 
     <!-- ── MODAL ENTRADA DE STOCK ── -->
     <div v-if="productoSeleccionado" class="modal-overlay">
-      <div class="modal" style="max-width:420px;">
+      <div class="modal">
         <h3 style="margin-bottom:0.25rem">Entrada de Mercadería</h3>
         <p style="color:var(--text-muted); font-size:0.875rem; margin-bottom:1rem;">
           {{ productoSeleccionado.name }} —
@@ -191,7 +209,7 @@
 
     <!-- ── MODAL HISTORIAL ── -->
     <div v-if="movimientos !== null" class="modal-overlay">
-      <div class="modal" style="max-width:600px;">
+      <div class="modal">
         <h3 style="margin-bottom:1rem">Historial — {{ productoHistorial?.name }}</h3>
         <table class="table" style="font-size:0.85rem;">
           <thead>
@@ -222,7 +240,7 @@
 
     <!-- ── MODAL ESCALAS DE VOLUMEN ── -->
     <div v-if="productoEscalas" class="modal-overlay">
-      <div class="modal" style="max-width:550px;">
+      <div class="modal">
         <h3 style="margin-bottom:0.25rem">Escalas por Volumen — {{ productoEscalas.name }}</h3>
         <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:1rem;">
           Define los precios especiales que se aplicarán según la quantity comprada.
@@ -284,9 +302,36 @@
 import { ref, computed, onMounted } from 'vue'
 import api from '../../../shared/api'
 import { useParametrosStore } from '../../../stores/parametros'
+import EmptyState from '@/components/EmptyState.vue'
+import TableSkeleton from '@/components/TableSkeleton.vue'
 
+const cargando = ref(true)
 const parametrosStore = useParametrosStore()
 const simbolo = computed(() => parametrosStore.company?.simbolo || '$')
+
+const limpiarBusqueda = () => {
+  busqueda.value = ''
+  soloBajoStock.value = false
+  cargar()
+}
+
+const unidades_medida = computed(() => {
+  const param = parametrosStore.obtener('inventario', 'unidades_medida', 'Pieza, Kilogramo, Litro, Caja, Metro, Par')
+  if (Array.isArray(param)) return param
+  return String(param).split(',').map(s => s.trim()).filter(s => s)
+})
+
+const categorias_productos = computed(() => {
+  const param = parametrosStore.obtener('inventario', 'categorias_productos', 'General, Alimentos, Bebidas, Electrónica, Ropa')
+  if (Array.isArray(param)) return param
+  return String(param).split(',').map(s => s.trim()).filter(s => s)
+})
+
+const tarifas_iva = computed(() => {
+  const param = parametrosStore.obtener('ventas', 'tarifas_iva', '0, 5, 8, 15')
+  if (Array.isArray(param)) return param
+  return String(param).split(',').map(s => s.trim()).filter(s => s)
+})
 
 const products = ref([])
 const busqueda = ref('')
@@ -301,6 +346,7 @@ const formProductoVacio = () => ({
   precio_compra: 0, precio_venta: 0,
   stock_inicial: 0, stock_minimo: 0,
   unidad: 'pza', tarifa_iva: '15',
+  category: '',
 })
 const formProducto = ref(formProductoVacio())
 const fotoFile = ref(null)
@@ -324,6 +370,7 @@ const movimientos = ref(null)
 const productoHistorial = ref(null)
 
 async function cargar() {
+  cargando.value = true
   const params = {}
   if (busqueda.value) params.q = busqueda.value
   if (soloBajoStock.value) params.bajo_stock = 'true'
@@ -332,6 +379,8 @@ async function cargar() {
     products.value = data
   } catch {
     products.value = []
+  } finally {
+    cargando.value = false
   }
 }
 

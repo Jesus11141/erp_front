@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+    <div class="page-header">
       <h1 class="page-title" style="margin:0">Facturación Electrónica</h1>
       <div>
         <button v-if="seleccionadas.length > 0" class="btn" style="background:#8e44ad; color:white; margin-right: 0.5rem;" @click="emitirMasivo" :disabled="procesando">Emitir Masivas ({{ seleccionadas.length }})</button>
@@ -23,18 +23,30 @@
           <thead>
             <tr>
               <th style="width: 40px; text-align: center;"><input type="checkbox" :checked="todasSeleccionadas" @change="toggleTodas" :disabled="emitibles.length === 0" title="Seleccionar todas las emitibles" /></th>
+              <th>Tipo</th>
               <th>Número</th><th>Cliente</th>
               <th>Fecha</th><th>Subtotal</th><th>IVA</th><th>Total</th>
               <th>F. Pago</th><th>Estado</th><th>Acciones</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="f in invoices" :key="f.id">
+            <tr v-if="cargando">
+              <td colspan="10" style="padding: 0; border: none;">
+                <TableSkeleton :rows="6" :has-avatar="false" :has-badge="true" :has-actions="true" />
+              </td>
+            </tr>
+            <template v-else>
+              <tr v-for="f in invoices" :key="f.id">
               <td style="text-align: center;">
                 <input v-if="(f.status === 'draft' || f.status === 'not_authorized') && f.cliente_identificacion !== '9999999999999'" 
                        type="checkbox" :value="f.id" v-model="seleccionadas" />
               </td>
-              <td style="font-family:monospace; font-size:0.8rem; white-space:nowrap;">{{ f.numero }}</td>
+              <td>
+                <span :class="['badge', f.document_type === '02' ? 'badge-info' : 'badge-primary']">
+                  {{ f.document_type === '02' ? 'Nota Venta' : 'Factura' }}
+                </span>
+              </td>
+              <td style="font-family:monospace; font-weight:600; color:var(--color-primario)">{{ f.numero }}</td>
               <td>
                 <div style="font-weight: 500; font-size:0.9rem;">{{ f.customer }}</div>
                 <div style="font-size: 0.75rem; color: #888;">{{ f.cliente_identificacion }}</div>
@@ -77,8 +89,20 @@
               </td>
             </tr>
             <tr v-if="!invoices.length">
-              <td colspan="10" style="text-align:center; color:var(--text-muted)">Sin facturas registradas</td>
+              <td colspan="10" style="padding: 0; border: none;">
+                <EmptyState 
+                  icon="fa-solid fa-file-invoice-dollar"
+                  icon-color="text-brand-500"
+                  icon-bg="bg-brand-50"
+                  title="Aún no has emitido facturas electrónicas"
+                  description="Comienza emitiendo tu primera factura electrónica o realiza ventas desde el punto de venta (POS) para autorizarlas ante el SRI."
+                  action-text="+ Emitir Primera Factura"
+                  action-icon="fa-solid fa-plus"
+                  @action="mostrarForm = true"
+                />
+              </td>
             </tr>
+            </template>
           </tbody>
         </table>
       </div>
@@ -110,6 +134,7 @@
         <button class="btn" style="position:absolute; top:1rem; right:1rem; background:transparent; border:none; font-size:1.25rem; cursor:pointer; color:var(--text-muted); padding:0;" @click="facturaSeleccionada = null" title="Cerrar (Esc)">✕</button>
         <h3 style="margin-bottom:1rem">Detalle de Autorización SRI</h3>
         <div style="font-size:0.875rem; display:flex; flex-direction:column; gap:0.5rem;">
+          <div><strong>Tipo:</strong> {{ facturaSeleccionada.document_type === '02' ? 'Nota de Venta' : 'Factura' }}</div>
           <div><strong>Número:</strong> {{ facturaSeleccionada.numero }}</div>
           <div><strong>Cliente:</strong> {{ facturaSeleccionada.customer }}</div>
           <div><strong>Identificación:</strong> {{ facturaSeleccionada.cliente_identificacion }}</div>
@@ -150,7 +175,10 @@ import api from '../../../shared/api'
 import { descargar, abrirPDF } from '@/shared/descargas'
 import { useParametrosStore } from '../../../stores/parametros'
 import InvoiceFormModal from './components/InvoiceFormModal.vue'
+import EmptyState from '@/components/EmptyState.vue'
+import TableSkeleton from '@/components/TableSkeleton.vue'
 
+const cargando = ref(true)
 const parametrosStore = useParametrosStore()
 const simbolo = computed(() => parametrosStore.company?.simbolo || '$')
 const invoices = ref([])
@@ -255,6 +283,7 @@ const totalPages = ref(1)
 const totalRecords = ref(0)
 
 async function cargar(page = 1) {
+  cargando.value = true
   try {
     const { data } = await api.get(`/facturacion/?page=${page}&limit=10`)
     invoices.value = data.data.map(mapFactura)
@@ -263,6 +292,8 @@ async function cargar(page = 1) {
     totalRecords.value = data.total
   } catch {
     invoices.value = []
+  } finally {
+    cargando.value = false
   }
 }
 

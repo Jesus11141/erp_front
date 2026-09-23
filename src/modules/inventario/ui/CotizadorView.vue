@@ -1,11 +1,15 @@
 <template>
   <div>
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+    <div class="page-header">
       <div>
-        <h1 class="page-title" style="margin:0">🧮 Cotizador de Precios y Volumen</h1>
-        <p style="color:var(--text-muted); font-size:0.875rem; margin-top:0.25rem;">
-          Calcula y simula precios por quantity aplicando escalas de discount automáticamente.
-        </p>
+        <div class="page-header">
+          <div>
+          <h1 class="page-title" style="margin:0">🧮 Cotizador de Precios y Volumen</h1>
+          <p style="color:var(--text-muted); font-size:0.875rem; margin-top:0.25rem;">
+            Calcula y simula precios por quantity aplicando escalas de discount automáticamente.
+          </p>
+          </div>
+        </div>
       </div>
     </div>
 

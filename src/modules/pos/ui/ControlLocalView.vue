@@ -1,44 +1,49 @@
 <template>
   <div>
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+    <div class="page-header">
       <div>
-        <h1 class="page-title" style="margin:0">🏢 Control de Local y Cajas</h1>
-        <p style="color:var(--text-muted); font-size:0.875rem; margin-top:0.25rem;">
-          Estandariza los nombres de registers físicas, sucursales y personal asignado para cierres y reportes impecables.
-        </p>
+        <div class="page-header">
+          <div>
+          <h1 class="page-title" style="margin:0">🏢 Control de Local y Cajas</h1>
+          <p style="color:var(--text-muted); font-size:0.875rem; margin-top:0.25rem;">
+            Estandariza los nombres de registers físicas, sucursales y personal asignado para cierres y reportes impecables.
+          </p>
+          </div>
+        </div>
       </div>
     </div>
 
     <!-- Pestañas de Navegación -->
-    <div class="tabs-header" style="display:flex; gap:0.5rem; margin-bottom:1.5rem; border-bottom:2px solid var(--border);">
+    <div class="tabs-container" style="margin-bottom: 1.5rem; background: #ffffff; border-radius: 12px; padding: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: inline-flex; gap: 0.5rem; border: 1px solid var(--border-color);">
       <button
-        :class="['tab-btn', tabActiva === 'registers' ? 'is_active' : '']"
+        :class="['tab-pill', tabActiva === 'registers' ? 'active' : '']"
         @click="tabActiva = 'registers'"
       >
-        🖥️ Cajas Físicas Registradas
+        <i class="fa-solid fa-desktop mr-2"></i> Cajas Físicas
       </button>
       <button
-        :class="['tab-btn', tabActiva === 'locales' ? 'is_active' : '']"
+        :class="['tab-pill', tabActiva === 'locales' ? 'active' : '']"
         @click="tabActiva = 'locales'"
       >
-        🏢 Locales / Sucursales
+        <i class="fa-solid fa-building mr-2"></i> Sucursales
       </button>
       <button
-        :class="['tab-btn', tabActiva === 'personal' ? 'is_active' : '']"
+        :class="['tab-pill', tabActiva === 'personal' ? 'active' : '']"
         @click="tabActiva = 'personal'"
       >
-        👥 Personal Registrado
+        <i class="fa-solid fa-users mr-2"></i> Personal
       </button>
     </div>
 
     <!-- PESTAÑA 1: CAJAS FÍSICAS REGISTRADAS -->
     <div v-if="tabActiva === 'registers'">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-        <h2 style="font-size:1.1rem; font-weight:700; margin:0;">Catálogo de Cajas Físicas</h2>
-        <button v-if="esAdmin" class="btn btn-primary" @click="abrirNuevaCaja()">+ Registrar Nueva Caja</button>
-      </div>
-
-      <div class="card">
+      <div class="card" style="padding: 1.5rem;">
+        <div class="page-header">
+          <h2 style="font-size:1.1rem; font-weight:700; margin:0; color: #1e293b;">Catálogo de Cajas Físicas</h2>
+          <button class="btn btn-primary" style="font-size: 0.85rem;" @click="abrirNuevaCaja()">
+            <i class="fa-solid fa-plus mr-1"></i> Registrar Nueva Caja
+          </button>
+        </div>
         <table class="table">
           <thead>
             <tr>
@@ -46,7 +51,7 @@
               <th>Nombre de Caja Estandarizado</th>
               <th>Sucursal / Local</th>
               <th>Estado</th>
-              <th v-if="esAdmin">Acción</th>
+              <th>Acción</th>
             </tr>
           </thead>
           <tbody>
@@ -59,7 +64,7 @@
                   {{ c.active ? 'Activa' : 'Inactiva' }}
                 </span>
               </td>
-              <td v-if="esAdmin">
+              <td>
                 <button class="btn btn-outline btn-sm" style="padding:0.15rem 0.4rem; font-size:0.75rem; margin-right: 0.25rem;" @click="editarCaja(c)">
                   ✎ Editar
                 </button>
@@ -80,12 +85,13 @@
 
     <!-- PESTAÑA 2: LOCALES / SUCURSALES -->
     <div v-if="tabActiva === 'locales'">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-        <h2 style="font-size:1.1rem; font-weight:700; margin:0;">Locales y Sucursales</h2>
-        <button v-if="esAdmin" class="btn btn-primary" @click="abrirNuevoLocal">+ Nueva Sucursal</button>
-      </div>
-
-      <div class="card">
+      <div class="card" style="padding: 1.5rem;">
+        <div class="page-header">
+          <h2 style="font-size:1.1rem; font-weight:700; margin:0; color: #1e293b;">Locales y Sucursales</h2>
+          <button class="btn btn-primary" style="font-size: 0.85rem;" @click="abrirNuevoLocal()">
+            <i class="fa-solid fa-plus mr-1"></i> Nueva Sucursal
+          </button>
+        </div>
         <table class="table">
           <thead>
             <tr>
@@ -93,7 +99,7 @@
               <th>Nombre del Local</th>
               <th>Dirección</th>
               <th>Estado</th>
-              <th v-if="esAdmin">Acción</th>
+              <th>Acción</th>
             </tr>
           </thead>
           <tbody>
@@ -106,7 +112,7 @@
                   {{ s.active ? 'Activo' : 'Inactivo' }}
                 </span>
               </td>
-              <td v-if="esAdmin">
+              <td>
                 <button class="btn btn-outline btn-sm" style="padding:0.15rem 0.4rem; font-size:0.75rem; margin-right: 0.25rem;" @click="editarLocal(s)">
                   ✎ Editar
                 </button>
@@ -127,8 +133,8 @@
 
     <!-- PESTAÑA 3: PERSONAL REGISTRADO -->
     <div v-if="tabActiva === 'personal'">
-      <h2 style="font-size:1.1rem; font-weight:700; margin-bottom:1rem;">Cajeros y Personal Habilitado</h2>
-      <div class="card">
+      <div class="card" style="padding: 1.5rem;">
+        <h2 style="font-size:1.1rem; font-weight:700; margin-bottom:1.5rem; color: #1e293b;">Cajeros y Personal Habilitado</h2>
         <table class="table">
           <thead>
             <tr>
@@ -161,7 +167,7 @@
 
     <!-- MODAL NUEVA CAJA REGISTRADA -->
     <div v-if="mostrarModalCaja" class="modal-overlay">
-      <div class="modal" style="max-width:450px;">
+      <div class="modal">
         <h3 style="margin-bottom:1rem;">Registrar Nueva Caja Física</h3>
 
         <div class="form-group">
@@ -185,6 +191,11 @@
           </select>
         </div>
 
+        <div class="form-group">
+          <label class="label">Punto de Emisión (SRI)</label>
+          <input v-model="formCaja.emission_point" class="input" placeholder="Ej: 001" maxlength="3" />
+        </div>
+
         <div style="display:flex; gap:0.5rem; justify-content:flex-end; margin-top:1.5rem;">
           <button class="btn btn-outline" @click="mostrarModalCaja = false">Cancelar</button>
           <button class="btn btn-primary" @click="guardarCaja" :disabled="guardandoCaja || !formCaja.name.trim()">
@@ -196,7 +207,7 @@
 
     <!-- MODAL NUEVA SUCURSAL -->
     <div v-if="mostrarModalLocal" class="modal-overlay">
-      <div class="modal" style="max-width:450px;">
+      <div class="modal">
         <h3 style="margin-bottom:1rem;">Nueva Sucursal / Local</h3>
 
         <div class="form-group">
@@ -244,12 +255,12 @@ const employees = ref([])
 
 const mostrarModalCaja = ref(false)
 const guardandoCaja = ref(false)
-const formCaja = ref({ code: '', name: '', branch_id: null })
+const formCaja = ref({ code: '', name: '', branch_id: null, emission_point: '001' })
 
 function abrirNuevaCaja() {
-  const code = 'CJ-' + String(cajasRegistradas.value.length + 1).padStart(3, '0')
-  const name = 'Turno de Caja #' + (cajasRegistradas.value.length + 1)
-  formCaja.value = { code, name, branch_id: null, id: null }
+  const code = `CAJA-${(cajasRegistradas.value.length + 1).toString().padStart(3, '0')}`
+  const name = `Caja ${cajasRegistradas.value.length + 1}`
+  formCaja.value = { code, name, branch_id: null, emission_point: '001', id: null }
   mostrarModalCaja.value = true
 }
 
@@ -365,23 +376,29 @@ async function eliminarLocal(id) {
 </script>
 
 <style scoped>
-.tab-btn {
-  padding: 0.75rem 1.25rem;
-  background: none;
+.tab-pill {
+  padding: 0.6rem 1.5rem;
+  background: transparent;
   border: none;
-  border-bottom: 3px solid transparent;
+  border-radius: 8px;
   font-weight: 600;
   font-size: 0.9rem;
   color: var(--text-muted);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
 }
-.tab-btn.is_active {
-  border-bottom-color: var(--color-primario);
-  color: var(--color-primario);
+.tab-pill.active {
+  background: var(--color-primario);
+  color: white;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
-.tab-btn:hover:not(.is_active) {
+.tab-pill:hover:not(.active) {
+  background: #f1f5f9;
   color: var(--text);
 }
+.mr-1 { margin-right: 0.25rem; }
+.mr-2 { margin-right: 0.5rem; }
 </style>
 

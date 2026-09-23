@@ -2,8 +2,12 @@
   <div>
     <div class="page-header">
       <div>
-        <h1 class="page-title">Resultados de Laboratorio</h1>
-        <p class="page-subtitle">El sistema interpreta automáticamente cada valor ingresado</p>
+        <div class="page-header">
+          <div>
+          <h1 class="page-title">Resultados de Laboratorio</h1>
+          <p class="page-subtitle">El sistema interpreta automáticamente cada valor ingresado</p>
+          </div>
+        </div>
       </div>
       <button class="btn btn-primary" @click="mostrarForm = true">+ Nuevo Examen</button>
     </div>
@@ -41,7 +45,7 @@
 
     <!-- Modal: nuevo examen -->
     <div v-if="mostrarForm" class="modal-overlay">
-      <div class="modal" style="max-width:720px">
+      <div class="modal">
         <h3 class="modal-title">Ingresar Resultados de Examen</h3>
 
         <!-- Paso 1: datos generales -->
@@ -149,7 +153,7 @@
 
     <!-- Modal: detalle de examen -->
     <div v-if="examenDetalle" class="modal-overlay">
-      <div class="modal" style="max-width:680px">
+      <div class="modal">
         <h3 class="modal-title">
           {{ examenDetalle.tipo_examen }} — {{ examenDetalle.paciente_nombre }}
         </h3>

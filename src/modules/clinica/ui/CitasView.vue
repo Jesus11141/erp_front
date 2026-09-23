@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+    <div class="page-header">
       <h1 class="page-title" style="margin:0">Agenda de Citas</h1>
       <button class="btn btn-primary" @click="abrirForm()">+ Nueva Cita</button>
     </div>
@@ -100,7 +100,7 @@
 
     <!-- Modal atender (consulta rápida) -->
     <div v-if="citaAtender" class="modal-overlay">
-      <div class="modal" style="max-width:680px">
+      <div class="modal">
         <h3 style="margin-bottom:1.25rem">Registrar Consulta — {{ citaAtender.paciente_nombre }}</h3>
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
           <div class="form-group" style="grid-column:1/-1">

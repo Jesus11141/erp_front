@@ -12,11 +12,16 @@ module.exports = {
       },
       colors: {
         brand: {
-          50: '#ecfdf5',
-          500: '#10b981',
-          600: '#059669',
-          700: '#047857',
-          900: '#064e3b',
+          50: '#eff6ff',
+          100: '#dbeafe',
+          200: '#bfdbfe',
+          300: '#93c5fd',
+          400: '#60a5fa',
+          500: '#2563EB', /* Principal Azul */
+          600: '#1D4ED8', /* Hover Azul Intenso */
+          700: '#1d4ed8',
+          800: '#1e40af',
+          900: '#1e3a8a',
         }
       }
     }

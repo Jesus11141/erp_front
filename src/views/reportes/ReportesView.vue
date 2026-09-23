@@ -1,9 +1,13 @@
 <template>
   <div>
-    <h1 class="page-title">Reportes</h1>
-    <p style="color:var(--text-muted); margin-bottom:1.5rem; font-size:0.9rem;">
-      Descarga reportes en PDF o Excel. Cada reporte usa los colores y datos de tu empresa.
-    </p>
+    <div class="page-header">
+      <div>
+      <h1 class="page-title">Reportes</h1>
+      <p style="color:var(--text-muted); margin-bottom:1.5rem; font-size:0.9rem;">
+        Descarga reportes en PDF o Excel. Cada reporte usa los colores y datos de tu empresa.
+      </p>
+      </div>
+    </div>
 
     <div class="reportes-grid">
 
@@ -125,7 +129,7 @@
             <tr v-for="f in invoices" :key="f.id">
               <td>{{ f.number }}</td>
               <td>{{ f.client || f.customer }}</td>
-              <td>{{ formatFecha(f.date) }}</td>
+              <td>{{ formatFecha(f.created_at) || formatFecha(f.date) }}</td>
               <td>${{ parseFloat(f.total).toFixed(2) }}</td>
               <td><span :class="badgeEstado(f.status)">{{ traducirEstado(f.status) }}</span></td>
               <td>
@@ -153,7 +157,7 @@
           <tbody>
             <tr v-for="c in quotations" :key="c.id">
               <td>{{ c.customer }}</td>
-              <td>{{ formatFecha(c.date) }}</td>
+              <td>{{ formatFecha(c.created_at) || formatFecha(c.date) }}</td>
               <td>${{ parseFloat(c.total).toFixed(2) }}</td>
               <td><span :class="badgeEstado(c.status)">{{ traducirEstado(c.status) }}</span></td>
               <td>
