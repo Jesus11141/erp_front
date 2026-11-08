@@ -2,16 +2,17 @@
   <div class="mapa-mesas">
     <div class="header">
       <h2>Mapa de Mesas</h2>
-      <div class="zonas-tabs">
-        <button 
-          v-for="zona in zonas" 
-          :key="zona.id"
-          :class="{ active: zona.id === selectedZonaId }"
-          @click="selectedZonaId = zona.id"
-        >
-          {{ zona.nombre }}
-        </button>
-      </div>
+    </div>
+    
+    <div class="zonas-tabs">
+      <button 
+        v-for="zona in zonas" 
+        :key="zona.id"
+        :class="{ active: zona.id === selectedZonaId }"
+        @click="selectedZonaId = zona.id"
+      >
+        {{ zona.nombre }}
+      </button>
     </div>
 
     <div class="mesas-grid" v-if="selectedZona">
@@ -28,6 +29,11 @@
       </div>
     </div>
 
+    <div v-else-if="zonas.length === 0" class="empty-state">
+      <h3>No tienes zonas ni mesas configuradas.</h3>
+      <p>Ve a "Configuración" -> "Restaurantes" en el menú principal para configurar tu salón.</p>
+    </div>
+
     <TomaPedidosModal 
       v-if="mesaSeleccionada"
       :mesa="mesaSeleccionada"
@@ -40,7 +46,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import TomaPedidosModal from './TomaPedidosModal.vue';
-import axios from 'axios';
+import api from '../../../shared/api';
 
 const zonas = ref([]);
 const selectedZonaId = ref(null);
@@ -52,7 +58,7 @@ const selectedZona = computed(() => {
 
 const cargarZonas = async () => {
   try {
-    const { data } = await axios.get('/api/restaurantes/zonas/');
+    const { data } = await api.get('restaurantes/zonas/');
     zonas.value = data;
     if (data.length > 0 && !selectedZonaId.value) {
       selectedZonaId.value = data[0].id;
@@ -83,6 +89,9 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 1rem;
+}
+.zonas-tabs {
   margin-bottom: 2rem;
 }
 .zonas-tabs button {
@@ -127,5 +136,12 @@ onMounted(() => {
   font-weight: bold;
   font-size: 1.2rem;
   margin-bottom: 0.5rem;
+}
+.empty-state {
+  text-align: center;
+  padding: 4rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  color: #6c757d;
 }
 </style>

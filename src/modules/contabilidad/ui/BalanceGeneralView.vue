@@ -30,6 +30,28 @@
           title="Imprimir Balance">
           <i class="fa-solid fa-print text-slate-500"></i> Imprimir
         </button>
+
+        <button 
+          v-if="reporte"
+          @click="exportarPDF" 
+          :disabled="exportandoPdf"
+          class="px-3.5 py-2 bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100 rounded-xl text-sm font-semibold transition-all shadow-sm flex items-center gap-1.5 disabled:opacity-50"
+          title="Descargar Balance General en PDF Oficial con Firmas">
+          <i v-if="exportandoPdf" class="fa-solid fa-spinner fa-spin text-rose-600"></i>
+          <i v-else class="fa-solid fa-file-pdf text-rose-600"></i>
+          <span>{{ exportandoPdf ? 'Generando...' : 'Exportar PDF' }}</span>
+        </button>
+
+        <button 
+          v-if="reporte"
+          @click="exportarExcel" 
+          :disabled="exportandoExcel"
+          class="px-3.5 py-2 bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 rounded-xl text-sm font-semibold transition-all shadow-sm flex items-center gap-1.5 disabled:opacity-50"
+          title="Descargar Balance General en Excel Corporativo con Firmas">
+          <i v-if="exportandoExcel" class="fa-solid fa-spinner fa-spin text-emerald-600"></i>
+          <i v-else class="fa-solid fa-file-excel text-emerald-600"></i>
+          <span>{{ exportandoExcel ? 'Generando...' : 'Exportar Excel' }}</span>
+        </button>
       </div>
     </div>
 
@@ -235,12 +257,15 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import api from '@/shared/api'
+import { descargar } from '@/shared/descargas'
 import { useToast } from 'vue-toastification'
 import CardSkeleton from '@/components/CardSkeleton.vue'
 import TableSkeleton from '@/components/TableSkeleton.vue'
 
 const toast = useToast()
 const loading = ref(false)
+const exportandoPdf = ref(false)
+const exportandoExcel = ref(false)
 const reporte = ref(null)
 const fecha = ref('')
 
@@ -265,6 +290,36 @@ const fetchBalance = async () => {
     toast.error('Error al generar el balance general')
   } finally {
     loading.value = false
+  }
+}
+
+const exportarPDF = async () => {
+  exportandoPdf.value = true
+  try {
+    const p = fecha.value ? `?date=${fecha.value}` : ''
+    const nombre = `balance_general_${fecha.value || 'corte'}.pdf`
+    await descargar(`/contabilidad/reportes/balance/export/pdf/${p}`, nombre)
+    toast.success('Balance General en PDF descargado exitosamente')
+  } catch (error) {
+    console.error('Error exportando PDF:', error)
+    toast.error('Error al descargar el Balance General en PDF')
+  } finally {
+    exportandoPdf.value = false
+  }
+}
+
+const exportarExcel = async () => {
+  exportandoExcel.value = true
+  try {
+    const p = fecha.value ? `?date=${fecha.value}` : ''
+    const nombre = `balance_general_${fecha.value || 'corte'}.xlsx`
+    await descargar(`/contabilidad/reportes/balance/export/excel/${p}`, nombre)
+    toast.success('Balance General en Excel descargado exitosamente')
+  } catch (error) {
+    console.error('Error exportando Excel:', error)
+    toast.error('Error al descargar el Balance General en Excel')
+  } finally {
+    exportandoExcel.value = false
   }
 }
 

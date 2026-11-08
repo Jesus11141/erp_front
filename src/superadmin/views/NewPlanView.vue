@@ -112,6 +112,7 @@ const categoriasModulos = [
       { id: 'pos', name: '🛒 Punto de Venta (POS)' },
       { id: 'inventario', name: '📦 Inventario Avanzado' },
       { id: 'facturacion', name: '🧾 Facturación SRI' },
+      { id: 'notas_venta', name: '📝 Notas de Venta' },
       { id: 'ventas', name: '📊 Gestión de Ventas' },
       { id: 'compras', name: '🛍️ Gestión de Compras' },
     ]
@@ -121,7 +122,9 @@ const categoriasModulos = [
     modulos: [
       { id: 'rrhh', name: '👥 Recursos Humanos' },
       { id: 'contabilidad', name: '📒 Contabilidad' },
+      { id: 'accounting', name: '🧾 Contabilidad SRI' },
       { id: 'centros_costos', name: '🏢 Centros de Costos' },
+      { id: 'reportes', name: '📈 Reportes Avanzados' },
     ]
   },
   {

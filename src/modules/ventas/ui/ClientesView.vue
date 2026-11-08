@@ -10,11 +10,18 @@
           Directorio de clientes para emisión de facturas electrónicas, notas de venta y cobranzas.
         </p>
       </div>
-      <button 
-        class="px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-medium text-sm transition-all shadow-sm hover:shadow flex items-center gap-2 whitespace-nowrap" 
-        @click="abrirNuevoCliente">
-        <i class="fa-solid fa-user-plus"></i> Nuevo Cliente
-      </button>
+      <div class="flex items-center gap-2">
+        <button 
+          class="px-4 py-2.5 bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 rounded-xl font-medium text-sm transition-all shadow-sm flex items-center gap-2 whitespace-nowrap" 
+          @click="mostrarModalImportar = true">
+          <i class="fa-solid fa-file-excel text-emerald-600"></i> Importar Excel
+        </button>
+        <button 
+          class="px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-medium text-sm transition-all shadow-sm hover:shadow flex items-center gap-2 whitespace-nowrap" 
+          @click="abrirNuevoCliente">
+          <i class="fa-solid fa-user-plus"></i> Nuevo Cliente
+        </button>
+      </div>
     </div>
 
     <!-- Barra de Búsqueda -->
@@ -182,6 +189,17 @@
 
       </div>
     </div>
+
+    <!-- Modal Importación Masiva Excel -->
+    <ExcelImportModal
+      :show="mostrarModalImportar"
+      entity="clientes"
+      title="Importar Clientes Masivamente"
+      description="Cargue su cartera de clientes con cédula/RUC, email y dirección desde un archivo Excel."
+      icon="fa-users"
+      @close="mostrarModalImportar = false"
+      @success="cargarClientes"
+    />
   </div>
 </template>
 
@@ -191,11 +209,13 @@ import api from '../../../shared/api'
 import { useToast } from 'vue-toastification'
 import EmptyState from '@/components/EmptyState.vue'
 import TableSkeleton from '@/components/TableSkeleton.vue'
+import ExcelImportModal from '@/shared/components/ExcelImportModal.vue'
 
 const toast = useToast()
 const customers = ref([])
 const busqueda = ref('')
 const mostrarForm = ref(false)
+const mostrarModalImportar = ref(false)
 const cargando = ref(false)
 const guardando = ref(false)
 const error = ref('')

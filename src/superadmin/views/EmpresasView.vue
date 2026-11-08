@@ -209,6 +209,39 @@
               />
               🧾 Notas de Venta en POS
             </label>
+            <label
+              class="modulo-check"
+              :class="{ is_active: tenantFeatures['rrhh_iess_flat_file'] }"
+            >
+              <input
+                type="checkbox"
+                :checked="tenantFeatures['rrhh_iess_flat_file']"
+                @change="toggleFeature(empresaSeleccionada.id, 'rrhh_iess_flat_file', $event.target.checked)"
+              />
+              📄 Archivo Plano IESS
+            </label>
+            <label
+              class="modulo-check"
+              :class="{ is_active: tenantFeatures['rrhh_payroll_pdf'] }"
+            >
+              <input
+                type="checkbox"
+                :checked="tenantFeatures['rrhh_payroll_pdf']"
+                @change="toggleFeature(empresaSeleccionada.id, 'rrhh_payroll_pdf', $event.target.checked)"
+              />
+              🖨️ Rol de Pagos PDF
+            </label>
+            <label
+              class="modulo-check"
+              :class="{ is_active: tenantFeatures['facturacion_guias_remision'] }"
+            >
+              <input
+                type="checkbox"
+                :checked="tenantFeatures['facturacion_guias_remision']"
+                @change="toggleFeature(empresaSeleccionada.id, 'facturacion_guias_remision', $event.target.checked)"
+              />
+              🚚 Guías de Remisión
+            </label>
 
             <!-- Aquí se pueden agregar más features a futuro (ej: Comisiones, Lotes, etc.) -->
           </div>
@@ -227,7 +260,11 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import api from '../../shared/api'
+import { useTenantStore } from '../../stores/tenant'
+import { useToast } from 'vue-toastification'
 
+const tenantStore = useTenantStore()
+const toast = useToast()
 const empresas = ref([])
 const busqueda = ref('')
 const empresaSeleccionada = ref(null)
@@ -262,7 +299,9 @@ const categoriasModulos = [
     modulos: [
       { clave: 'rrhh',         label: 'RRHH',         icono: '👥' },
       { clave: 'contabilidad', label: 'Contabilidad', icono: '📒' },
+      { clave: 'accounting',   label: 'Contabilidad SRI', icono: '🧾' },
       { clave: 'centros_costos', label: 'Centros de Costos', icono: '🏢' },
+      { clave: 'reportes',     label: 'Reportes Avanzados', icono: '📈' },
     ]
   },
   {
@@ -354,10 +393,19 @@ async function toggleEmpresa(tenant) {
 }
 
 async function toggleModulo(tenantId, modulo, activar) {
-  const { data } = await api.post(`/superadmin/tenants/${tenantId}/modules/${modulo}/`, { activar })
-  empresaSeleccionada.value = data
-  const idx = empresas.value.findIndex(e => e.id === tenantId)
-  if (idx !== -1) empresas.value[idx] = data
+  try {
+    const { data } = await api.post(`/superadmin/tenants/${tenantId}/modules/${modulo}/`, { activar })
+    empresaSeleccionada.value = data
+    const idx = empresas.value.findIndex(e => e.id === tenantId)
+    if (idx !== -1) empresas.value[idx] = data
+    if (tenantStore.tenant?.id === tenantId) {
+      await tenantStore.cargar()
+    }
+    toast.success(`Módulo ${modulo} ${activar ? 'activado' : 'desactivado'}`)
+  } catch (err) {
+    console.error('Error toggling module:', err)
+    toast.error(`Error al modificar módulo: ${err.response?.data?.error || err.message}`)
+  }
 }
 
 async function toggleFeature(tenantId, featureKey, isEnabled) {
@@ -369,10 +417,19 @@ async function toggleFeature(tenantId, featureKey, isEnabled) {
 }
 
 async function guardarEdicion() {
-  const { data } = await api.put(`/superadmin/tenants/${empresaSeleccionada.value.id}/`, formEditar.value)
-  const idx = empresas.value.findIndex(e => e.id === data.id)
-  if (idx !== -1) empresas.value[idx] = data
-  empresaSeleccionada.value = null
+  try {
+    const { data } = await api.put(`/superadmin/tenants/${empresaSeleccionada.value.id}/`, formEditar.value)
+    const idx = empresas.value.findIndex(e => e.id === data.id)
+    if (idx !== -1) empresas.value[idx] = data
+    if (tenantStore.tenant?.id === data.id) {
+      await tenantStore.cargar()
+    }
+    toast.success('Suscripción actualizada con éxito')
+    empresaSeleccionada.value = null
+  } catch (err) {
+    console.error('Error guardando edición:', err)
+    toast.error(`Error al guardar: ${err.response?.data?.error || err.message}`)
+  }
 }
 
 onMounted(cargar)

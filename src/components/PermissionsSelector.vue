@@ -22,7 +22,20 @@
         <h4>📄 Facturación</h4>
         <label class="checkbox-container"><input type="checkbox" value="facturacion.facturas" v-model="model"> Facturas</label>
         <label class="checkbox-container"><input type="checkbox" value="facturacion.notas_credito" v-model="model"> Notas de Crédito</label>
+        <label class="checkbox-container"><input type="checkbox" value="facturacion.retenciones" v-model="model"> Retenciones</label>
+        <label class="checkbox-container"><input type="checkbox" value="facturacion.guias" v-model="model"> Guías de Remisión</label>
+        <label class="checkbox-container"><input type="checkbox" value="facturacion.liquidaciones" v-model="model"> Liquidaciones de Compra</label>
         <label class="checkbox-container" style="margin-top: 0.5rem; font-style: italic;"><input type="checkbox" value="facturacion.*" v-model="model"> Todo Facturación</label>
+      </div>
+
+      <!-- Compras -->
+      <div v-if="modulos.includes('compras')" class="module-group">
+        <h4>🛒 Compras</h4>
+        <label class="checkbox-container"><input type="checkbox" value="compras.proveedores" v-model="model"> Proveedores</label>
+        <label class="checkbox-container"><input type="checkbox" value="compras.ordenes" v-model="model"> Órdenes de Compra</label>
+        <label class="checkbox-container"><input type="checkbox" value="compras.facturas" v-model="model"> Facturas de Compra</label>
+        <label class="checkbox-container"><input type="checkbox" value="compras.cuentas_pagar" v-model="model"> Cuentas por Pagar</label>
+        <label class="checkbox-container" style="margin-top: 0.5rem; font-style: italic;"><input type="checkbox" value="compras.*" v-model="model"> Todo Compras</label>
       </div>
 
       <!-- Notas de Venta -->
@@ -67,10 +80,13 @@
       </div>
       
       <!-- Restaurante -->
-      <div v-if="modulos.includes('restaurante')" class="module-group">
+      <div v-if="modulos.includes('restaurante') || modulos.includes('restaurantes')" class="module-group">
         <h4>🍽️ Restaurante</h4>
         <label class="checkbox-container"><input type="checkbox" value="restaurante.mesas" v-model="model"> Mapa de Mesas</label>
-        <label class="checkbox-container"><input type="checkbox" value="restaurante.cocina" v-model="model"> Pantalla de Cocina</label>
+        <label class="checkbox-container"><input type="checkbox" value="restaurante.pedidos" v-model="model"> Tomar Pedidos (Mesero)</label>
+        <label class="checkbox-container"><input type="checkbox" value="restaurante.cobrar" v-model="model"> Cobrar / Facturar (Cajero)</label>
+        <label class="checkbox-container"><input type="checkbox" value="restaurante.cocina" v-model="model"> Pantalla de Cocina (KDS)</label>
+        <label class="checkbox-container"><input type="checkbox" value="restaurante.config" v-model="model"> Configuración (Zonas/Mesas/Platos)</label>
         <label class="checkbox-container" style="margin-top: 0.5rem; font-style: italic;"><input type="checkbox" value="restaurante.*" v-model="model"> Todo Restaurante</label>
       </div>
 
@@ -82,6 +98,10 @@
         <label class="checkbox-container"><input type="checkbox" value="contabilidad.libro_mayor" v-model="model"> Libro Mayor</label>
         <label class="checkbox-container"><input type="checkbox" value="contabilidad.estados" v-model="model"> Estados Financieros</label>
         <label class="checkbox-container"><input type="checkbox" value="contabilidad.centros" v-model="model"> Centros de Costos</label>
+        <label class="checkbox-container"><input type="checkbox" value="contabilidad.bancos" v-model="model"> Cuentas Bancarias</label>
+        <label class="checkbox-container"><input type="checkbox" value="contabilidad.cash_management" v-model="model"> Cash Management</label>
+        <label class="checkbox-container"><input type="checkbox" value="contabilidad.conciliacion" v-model="model"> Conciliación Bancaria</label>
+        <label class="checkbox-container"><input type="checkbox" value="contabilidad.periodos" v-model="model"> Períodos Fiscales</label>
         <label class="checkbox-container" style="margin-top: 0.5rem; font-style: italic;"><input type="checkbox" value="contabilidad.*" v-model="model"> Todo Contabilidad</label>
       </div>
 

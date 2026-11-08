@@ -44,7 +44,20 @@
                     style="padding:0.2rem 0.5rem; font-size:0.75rem" @click="autorizar(nc)">
                     Consultar
                   </button>
-                  <button v-if="nc.status === 'authorized' || nc.status === 'autorizada'" class="btn btn-outline"
+                  <button class="btn"
+                    style="padding:0.2rem 0.5rem; font-size:0.75rem; background:#8e44ad; color:white;"
+                    @click="verPDF(nc)"
+                    title="Ver RIDE en PDF Oficial SRI">
+                    <i class="fa-solid fa-file-pdf" style="margin-right:0.2rem;"></i> PDF
+                  </button>
+                  <button v-if="nc.status === 'authorized' || nc.status === 'autorizada'" class="btn"
+                    style="padding:0.2rem 0.5rem; font-size:0.75rem; background:#0284c7; color:white;"
+                    :disabled="enviandoCorreoId === nc.id"
+                    @click="abrirModalCorreo(nc)"
+                    title="Enviar RIDE PDF y XML por correo electrónico">
+                    {{ enviandoCorreoId === nc.id ? 'Enviando...' : '📧 Correo' }}
+                  </button>
+                  <button class="btn btn-outline"
                     style="padding:0.2rem 0.5rem; font-size:0.75rem" @click="verAutorizacion(nc)">
                     Detalle
                   </button>
@@ -94,8 +107,53 @@
             <strong>Mensaje SRI:</strong> {{ notaSeleccionada.sri_message }}
           </div>
         </div>
-        <div style="margin-top:1rem; display:flex; justify-content:flex-end;">
+        <div style="margin-top:1rem; display:flex; justify-content:flex-end; gap:0.5rem;">
+          <button v-if="notaSeleccionada.status === 'authorized' || notaSeleccionada.status === 'autorizada'"
+            class="btn" style="background:#0284c7; color:white;"
+            :disabled="enviandoCorreoId === notaSeleccionada.id"
+            @click="abrirModalCorreo(notaSeleccionada)">
+            <i class="fa-solid fa-paper-plane" style="margin-right:0.25rem;"></i>
+            {{ enviandoCorreoId === notaSeleccionada.id ? 'Enviando...' : 'Reenviar Correo' }}
+          </button>
+          <button class="btn" style="background:#8e44ad; color:white;" @click="verPDF(notaSeleccionada)">
+            <i class="fa-solid fa-file-pdf" style="margin-right:0.25rem;"></i> Imprimir RIDE PDF
+          </button>
           <button class="btn btn-outline" @click="notaSeleccionada = null">Cerrar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Reenviar Correo -->
+    <div v-if="notaParaCorreo" class="modal-overlay" @mousedown.self="notaParaCorreo = null">
+      <div class="modal" style="position:relative; max-width:440px;">
+        <button class="btn" style="position:absolute; top:1rem; right:1rem; background:transparent; border:none; font-size:1.25rem; cursor:pointer; color:var(--text-muted); padding:0;" @click="notaParaCorreo = null" title="Cerrar">✕</button>
+        <h3 style="margin-bottom:0.75rem; display:flex; align-items:center; gap:0.5rem;">
+          <span>📧</span> Enviar Nota de Crédito por Correo
+        </h3>
+        <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1rem;">
+          Se enviará el <strong>RIDE en PDF</strong> y el <strong>XML autorizado</strong> de la nota de crédito <strong>{{ notaParaCorreo.number }}</strong> al cliente.
+        </p>
+
+        <div class="form-group" style="margin-bottom:1rem;">
+          <label style="font-weight:600; display:block; margin-bottom:0.35rem; font-size:0.85rem;">Correo Electrónico Destinatario *</label>
+          <input
+            v-model="correoDestinatario"
+            type="email"
+            class="input"
+            placeholder="cliente@ejemplo.com"
+            required
+          />
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1.25rem;">
+          <button class="btn btn-outline" @click="notaParaCorreo = null">Cancelar</button>
+          <button
+            class="btn btn-primary"
+            :disabled="enviandoCorreo || !correoDestinatario"
+            @click="enviarCorreoConfirmado"
+          >
+            {{ enviandoCorreo ? 'Enviando...' : 'Enviar Correo' }}
+          </button>
         </div>
       </div>
     </div>
@@ -211,6 +269,38 @@ const autorizar = async (nc) => {
 
 const verAutorizacion = (nc) => {
   notaSeleccionada.value = nc
+}
+
+const verPDF = (nc) => {
+  window.open(`${api.defaults.baseURL || ''}/reportes/pdf/credit-note/${nc.id}/`, '_blank')
+}
+
+const enviandoCorreoId = ref(null)
+const enviandoCorreo = ref(false)
+const notaParaCorreo = ref(null)
+const correoDestinatario = ref('')
+
+const abrirModalCorreo = (nc) => {
+  notaParaCorreo.value = nc
+  correoDestinatario.value = nc.client_email || nc.cliente_email || ''
+}
+
+const enviarCorreoConfirmado = async () => {
+  if (!correoDestinatario.value || !notaParaCorreo.value) return
+  enviandoCorreo.value = true
+  enviandoCorreoId.value = notaParaCorreo.value.id
+  try {
+    const { data } = await api.post(`/facturacion/notas-credito/${notaParaCorreo.value.id}/enviar-correo/`, {
+      email: correoDestinatario.value
+    })
+    showAlert({ type: 'success', title: 'Correo Enviado', message: data.mensaje || 'Nota de crédito enviada exitosamente por correo electrónico.' })
+    notaParaCorreo.value = null
+  } catch (error) {
+    showAlert({ type: 'error', title: 'Error al enviar correo', message: error.response?.data?.error || 'No se pudo enviar el correo' })
+  } finally {
+    enviandoCorreo.value = false
+    enviandoCorreoId.value = null
+  }
 }
 
 onMounted(() => {

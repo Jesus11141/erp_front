@@ -123,12 +123,30 @@
                 </div>
 
                 <div class="flex items-center space-x-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+                    <!-- Pestaña destacada de Mesas/Salón (Solo si el tenant tiene activo restaurantes) -->
+                    <button 
+                        v-if="tenantStore.tieneModulo('restaurantes')"
+                        @click="activarModoRestaurante"
+                        :class="[
+                            modoRestauranteActivo
+                                ? 'bg-amber-500 text-slate-950 font-black shadow-md shadow-amber-500/20 ring-2 ring-amber-400' 
+                                : 'bg-amber-50 text-amber-900 hover:bg-amber-100 border border-amber-200 font-bold',
+                            'px-3.5 py-2 rounded-xl text-xs whitespace-nowrap transition-all flex items-center gap-1.5'
+                        ]"
+                    >
+                        <i class="fa-solid fa-chair text-[12px] text-amber-700"></i>
+                        <span>Mesas / Salón</span>
+                        <span v-if="mesasOcupadasCount > 0" class="ml-1 px-1.5 py-0.5 text-[10px] bg-rose-500 text-white rounded-full font-black animate-pulse">
+                            {{ mesasOcupadasCount }}
+                        </span>
+                    </button>
+
                     <button 
                         v-for="cat in categoriasPOS" 
                         :key="cat.id"
-                        @click="selectedCategory = cat.id"
+                        @click="seleccionarCategoriaPOS(cat.id)"
                         :class="[
-                            selectedCategory === cat.id 
+                            (!modoRestauranteActivo && selectedCategory === cat.id)
                                 ? 'bg-brand-500 text-slate-950 font-bold shadow-md shadow-brand-500/20' 
                                 : 'bg-slate-50 text-slate-600 hover:text-slate-800 hover:bg-slate-100 border border-slate-200',
                             'px-3 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all'
@@ -140,8 +158,174 @@
                 </div>
             </div>
 
-            <!-- PRODUCT GRID -->
-            <div class="flex-1 overflow-y-auto p-4 bg-slate-100/50">
+            <!-- VISTA DE RESTAURANTE: SALÓN & MESAS / MENÚ DE PLATOS -->
+            <div v-if="tenantStore.tieneModulo('restaurantes') && modoRestauranteActivo" class="flex-1 overflow-y-auto p-4 bg-slate-100/60 flex flex-col">
+                <!-- Barra de control del salón: Zonas y Selector Mesas/Platos -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-3 mb-4 flex flex-wrap items-center justify-between gap-3">
+                    <div class="flex items-center gap-2 overflow-x-auto scrollbar-none">
+                        <button 
+                            v-for="zona in zonasRestaurante" 
+                            :key="zona.id"
+                            @click="zonaSeleccionadaId = zona.id"
+                            :class="[
+                                zonaSeleccionadaId === zona.id 
+                                    ? 'bg-slate-900 text-white font-bold shadow-sm' 
+                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium',
+                                'px-3.5 py-1.5 rounded-xl text-xs whitespace-nowrap transition-all'
+                            ]"
+                        >
+                            {{ zona.nombre }}
+                            <span class="text-[10px] opacity-75 ml-1">({{ zona.mesas ? zona.mesas.length : 0 }})</span>
+                        </button>
+                        <span v-if="zonasRestaurante.length === 0" class="text-xs text-slate-400 italic">No hay zonas configuradas</span>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <!-- Switch Mesas vs Menú -->
+                        <div class="bg-slate-100 p-0.5 rounded-xl flex items-center border border-slate-200">
+                            <button 
+                                @click="subVistaRestaurante = 'mesas'"
+                                :class="[
+                                    subVistaRestaurante === 'mesas' ? 'bg-white text-slate-900 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900 font-medium',
+                                    'px-2.5 py-1 rounded-lg text-xs transition-all flex items-center gap-1.5'
+                                ]"
+                            >
+                                <i class="fa-solid fa-chair text-[11px]"></i> Mesas
+                            </button>
+                            <button 
+                                @click="subVistaRestaurante = 'platos'"
+                                :class="[
+                                    subVistaRestaurante === 'platos' ? 'bg-white text-slate-900 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900 font-medium',
+                                    'px-2.5 py-1 rounded-lg text-xs transition-all flex items-center gap-1.5'
+                                ]"
+                            >
+                                <i class="fa-solid fa-utensils text-[11px]"></i> Menú / Platos
+                            </button>
+                        </div>
+
+                        <button 
+                            @click="cargarDatosRestaurante" 
+                            class="bg-slate-100 hover:bg-slate-200 text-slate-700 p-2 rounded-xl text-xs transition-colors" 
+                            title="Actualizar mesas"
+                        >
+                            <i class="fa-solid fa-rotate-right" :class="{ 'fa-spin': cargandoRestaurante }"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- SUB-VISTA 1: GRID DE MESAS -->
+                <div v-if="subVistaRestaurante === 'mesas'" class="flex-1">
+                    <div v-if="mesasZonaActual.length > 0" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5">
+                        <div 
+                            v-for="mesa in mesasZonaActual" 
+                            :key="mesa.id"
+                            @click="seleccionarMesaEnPOS(mesa)"
+                            :class="[
+                                mesaSeleccionada?.id === mesa.id ? 'ring-4 ring-brand-500 scale-[1.02]' : '',
+                                mesa.estado === 'libre' 
+                                    ? 'bg-emerald-50/70 border-emerald-300 hover:border-emerald-500 hover:bg-emerald-50' 
+                                    : 'bg-amber-50/80 border-amber-300 hover:border-amber-500 hover:bg-amber-50 shadow-amber-500/10',
+                                'border-2 rounded-2xl p-3.5 flex flex-col justify-between cursor-pointer transition-all shadow-sm select-none relative group min-h-[130px]'
+                            ]"
+                        >
+                            <div class="flex items-start justify-between">
+                                <span class="text-2xl">
+                                    <i :class="mesa.estado === 'libre' ? 'fa-solid fa-chair text-emerald-600' : 'fa-solid fa-couch text-amber-600'"></i>
+                                </span>
+                                <span 
+                                    :class="mesa.estado === 'libre' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800 font-black animate-pulse'"
+                                    class="px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase"
+                                >
+                                    {{ mesa.estado === 'libre' ? 'Libre' : 'Ocupada' }}
+                                </span>
+                            </div>
+
+                            <div class="my-1.5">
+                                <h4 class="font-black text-slate-800 text-sm leading-tight">{{ mesa.nombre }}</h4>
+                                <span class="text-[11px] text-slate-500 font-medium">{{ mesa.asientos }} Pax</span>
+                            </div>
+
+                            <div class="pt-2 border-t border-slate-200/60 flex items-center justify-between text-xs">
+                                <template v-if="mesa.estado === 'libre'">
+                                    <span class="text-[10px] text-emerald-700 font-medium">Disponible</span>
+                                    <i class="fa-solid fa-plus text-[10px] text-emerald-600 group-hover:translate-x-0.5 transition-transform"></i>
+                                </template>
+                                <template v-else>
+                                    <span class="text-[10px] text-amber-800 font-bold">Cargar comanda</span>
+                                    <i class="fa-solid fa-arrow-right text-[10px] text-amber-700 group-hover:translate-x-0.5 transition-transform"></i>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-else-if="zonasRestaurante.length === 0" class="flex-1 flex flex-col items-center justify-center p-8 text-center bg-white rounded-2xl border border-slate-200">
+                        <div class="w-16 h-16 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center text-2xl mb-3">
+                            <i class="fa-solid fa-utensils"></i>
+                        </div>
+                        <h3 class="font-bold text-slate-800 text-sm">No hay zonas ni mesas configuradas</h3>
+                        <p class="text-xs text-slate-500 mt-1 max-w-sm">Configura tu salón en "Configuración > Restaurantes" para gestionar mesas desde el POS.</p>
+                    </div>
+
+                    <div v-else class="flex-1 flex flex-col items-center justify-center p-8 text-center bg-white rounded-2xl border border-slate-200">
+                        <p class="text-xs text-slate-500">Esta zona no tiene mesas asociadas actualmente.</p>
+                    </div>
+                </div>
+
+                <!-- SUB-VISTA 2: MENÚ DE PLATOS -->
+                <div v-else-if="subVistaRestaurante === 'platos'" class="flex-1 flex flex-col">
+                    <div class="flex items-center gap-1.5 overflow-x-auto pb-2 scrollbar-none mb-3">
+                        <button 
+                            @click="categoriaPlatoSeleccionada = 'Todas'"
+                            :class="[
+                                categoriaPlatoSeleccionada === 'Todas' ? 'bg-slate-900 text-white font-bold' : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200',
+                                'px-3 py-1.5 rounded-xl text-xs whitespace-nowrap transition-all'
+                            ]"
+                        >
+                            ⭐ Todas
+                        </button>
+                        <button 
+                            v-for="cat in categoriasPlatosRestaurante" 
+                            :key="cat"
+                            @click="categoriaPlatoSeleccionada = cat"
+                            :class="[
+                                categoriaPlatoSeleccionada === cat ? 'bg-slate-900 text-white font-bold' : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200',
+                                'px-3 py-1.5 rounded-xl text-xs whitespace-nowrap transition-all'
+                            ]"
+                        >
+                            {{ cat }}
+                        </button>
+                    </div>
+
+                    <div v-if="platosFiltradosRestaurante.length > 0" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                        <div 
+                            v-for="plato in platosFiltradosRestaurante" 
+                            :key="plato.id"
+                            @click="agregarPlatoAlCarrito(plato)"
+                            class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 flex flex-col justify-between cursor-pointer hover:shadow-md hover:border-amber-300 transition-all select-none group"
+                        >
+                            <div>
+                                <div class="flex items-center justify-between mb-1.5">
+                                    <span class="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md uppercase">
+                                        {{ plato.categoria || 'General' }}
+                                    </span>
+                                    <i class="fa-solid fa-plus-circle text-brand-500 opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                                </div>
+                                <h5 class="font-bold text-slate-800 text-xs line-clamp-2 leading-tight">{{ plato.nombre }}</h5>
+                            </div>
+                            <div class="mt-3 flex items-center justify-between">
+                                <span class="text-xs font-black text-slate-900 font-mono">${{ Number(plato.precio).toFixed(2) }}</span>
+                                <span class="text-[10px] text-slate-400 font-medium">Agregar</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div v-else class="flex-1 flex items-center justify-center p-8 bg-white rounded-2xl border border-slate-200 text-center">
+                        <p class="text-xs text-slate-500">No hay platos en esta categoría.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PRODUCT GRID NORMAL (RETAIL) -->
+            <div v-else class="flex-1 overflow-y-auto p-4 bg-slate-100/50">
                 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" v-if="productosFiltrados.length > 0">
                     <div 
                         v-for="p in productosFiltrados" 
@@ -190,6 +374,38 @@
         <!-- RIGHT COLUMN: CURRENT CART -->
         <section class="w-full md:w-[420px] bg-slate-50 flex flex-col h-full border-t md:border-t-0 md:border-l border-slate-200 shrink-0">
             
+            <!-- Banner de Mesa Seleccionada (Restaurante) -->
+            <div v-if="mesaSeleccionada" class="p-2.5 bg-amber-50 border-b border-amber-200 flex items-center justify-between">
+                <div class="flex items-center gap-2.5 overflow-hidden">
+                    <div class="w-8 h-8 rounded-xl bg-amber-500 text-slate-950 font-bold flex items-center justify-center text-sm shrink-0 shadow-sm">
+                        <i class="fa-solid fa-chair"></i>
+                    </div>
+                    <div class="truncate">
+                        <div class="text-xs font-black text-slate-900 truncate uppercase flex items-center gap-1.5">
+                            <span>{{ mesaSeleccionada.nombre }}</span>
+                            <span 
+                                class="text-[9px] font-bold px-1.5 py-0.2 rounded" 
+                                :class="mesaSeleccionada.estado === 'libre' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'"
+                            >
+                                {{ mesaSeleccionada.estado === 'libre' ? 'Libre' : 'Ocupada' }}
+                            </span>
+                        </div>
+                        <div class="text-[10px] text-slate-500 font-mono truncate">
+                            {{ mesaSeleccionada.asientos }} Pax • {{ pedidoMesaId ? 'Comanda #' + pedidoMesaId : 'Nueva orden de mesa' }}
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-1 shrink-0">
+                    <button 
+                        @click="desvincularMesa" 
+                        class="text-[10px] font-bold text-slate-500 hover:text-rose-600 bg-white hover:bg-rose-50 px-2 py-1 rounded-lg border border-slate-200 transition-colors" 
+                        title="Desvincular mesa de esta venta"
+                    >
+                        <i class="fa-solid fa-xmark mr-0.5"></i> Quitar
+                    </button>
+                </div>
+            </div>
+
             <!-- Customer Selection Section -->
             <div class="p-3 bg-white/60 border-b border-slate-200 relative">
                 <div class="flex items-center justify-between mb-2">
@@ -358,6 +574,18 @@
                             {{ carrito.reduce((s,i) => s+Number(i.quantity), 0) }} ítems
                         </span>
                     </div>
+                </div>
+
+                <!-- Botón de Envío a Cocina si hay mesa seleccionada -->
+                <div v-if="tenantStore.tieneModulo('restaurantes') && mesaSeleccionada" class="pt-1">
+                    <button 
+                        @click="enviarComandaDesdePOS"
+                        :disabled="carrito.length === 0 || enviandoComanda"
+                        class="w-full rounded-xl text-xs font-bold py-2.5 px-3 bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md flex items-center justify-center gap-2 transition-all disabled:opacity-40"
+                    >
+                        <i class="fa-solid fa-bell-concierge" :class="{ 'fa-bounce': enviandoComanda }"></i>
+                        <span>{{ enviandoComanda ? 'ENVIANDO A COCINA...' : 'ENVIAR A COCINA / ACTUALIZAR MESA' }}</span>
+                    </button>
                 </div>
 
                 <div class="flex gap-2">
@@ -991,6 +1219,202 @@ const categoriasPOS = computed(() => {
 })
 const selectedCategory = ref('todos')
 
+// ==========================================
+// Integración Salón y Mesas de Restaurante
+// ==========================================
+const modoRestauranteActivo = ref(false)
+const subVistaRestaurante = ref('mesas')
+const zonasRestaurante = ref([])
+const zonaSeleccionadaId = ref(null)
+const mesaSeleccionada = ref(null)
+const pedidoMesaId = ref(null)
+const platosRestaurante = ref([])
+const categoriaPlatoSeleccionada = ref('Todas')
+const cargandoRestaurante = ref(false)
+const enviandoComanda = ref(false)
+
+const zonaActualRestaurante = computed(() => {
+    return zonasRestaurante.value.find(z => z.id === zonaSeleccionadaId.value)
+})
+
+const mesasZonaActual = computed(() => {
+    return zonaActualRestaurante.value ? (zonaActualRestaurante.value.mesas || []) : []
+})
+
+const mesasOcupadasCount = computed(() => {
+    let count = 0
+    for (const z of zonasRestaurante.value) {
+        for (const m of (z.mesas || [])) {
+            if (m.estado === 'ocupada') count++
+        }
+    }
+    return count
+})
+
+const categoriasPlatosRestaurante = computed(() => {
+    const cats = new Set()
+    for (const p of platosRestaurante.value) {
+        if (p.categoria && p.categoria.trim()) {
+            cats.add(p.categoria.trim())
+        }
+    }
+    return Array.from(cats)
+})
+
+const platosFiltradosRestaurante = computed(() => {
+    if (categoriaPlatoSeleccionada.value === 'Todas') {
+        return platosRestaurante.value
+    }
+    return platosRestaurante.value.filter(p => (p.categoria?.trim() || 'General') === categoriaPlatoSeleccionada.value)
+})
+
+const cargarDatosRestaurante = async () => {
+    if (!tenantStore.tieneModulo('restaurantes')) return
+    cargandoRestaurante.value = true
+    try {
+        const [resZonas, resPlatos] = await Promise.all([
+            api.get('restaurantes/zonas/'),
+            api.get('restaurantes/platos/')
+        ])
+        zonasRestaurante.value = resZonas.data || []
+        if (zonasRestaurante.value.length > 0 && !zonaSeleccionadaId.value) {
+            zonaSeleccionadaId.value = zonasRestaurante.value[0].id
+        }
+        platosRestaurante.value = resPlatos.data || []
+    } catch (e) {
+        console.error('Error cargando datos de restaurante:', e)
+    } finally {
+        cargandoRestaurante.value = false
+    }
+}
+
+const activarModoRestaurante = () => {
+    modoRestauranteActivo.value = true
+    if (zonasRestaurante.value.length === 0) {
+        cargarDatosRestaurante()
+    }
+}
+
+const seleccionarCategoriaPOS = (catId) => {
+    modoRestauranteActivo.value = false
+    selectedCategory.value = catId
+}
+
+const cargarComandaMesa = async (mesa) => {
+    mesaSeleccionada.value = mesa
+    try {
+        const { data } = await api.get(`restaurantes/pedidos/?mesa_id=${mesa.id}`)
+        if (data && data.length > 0) {
+            const pedido = data[0]
+            pedidoMesaId.value = pedido.id
+            const ivaVal = String(parametrosStore.obtener('ventas', 'iva', '15'))
+            carrito.value = (pedido.lineas || []).map(l => ({
+                product_id: /^\d+$/.test(String(l.item_id)) ? parseInt(l.item_id) : 0,
+                item_ref: String(l.item_id),
+                code: 'REST-' + (l.item_id || l.id),
+                description: l.item_nombre,
+                quantity: l.cantidad,
+                unit_price: parseFloat(l.precio_unitario),
+                discount: 0,
+                tarifa_iva: ivaVal,
+                es_restaurante: true,
+                linea_id: l.id,
+                estado_cocina: l.estado_cocina
+            }))
+            showAlert({ type: 'info', title: 'Mesa Seleccionada', message: `Comanda de ${mesa.nombre} cargada (${carrito.value.length} productos).` })
+        } else {
+            pedidoMesaId.value = null
+            showAlert({ type: 'info', title: 'Mesa Libre', message: `${mesa.nombre} seleccionada para nueva orden.` })
+        }
+    } catch (e) {
+        console.error('Error cargando pedido de mesa:', e)
+    }
+}
+
+const seleccionarMesaEnPOS = async (mesa) => {
+    if (mesa.estado === 'ocupada') {
+        await cargarComandaMesa(mesa)
+    } else {
+        mesaSeleccionada.value = mesa
+        pedidoMesaId.value = null
+        showAlert({ 
+            type: 'info', 
+            title: 'Mesa Libre', 
+            message: `${mesa.nombre} seleccionada. Agrega platos o productos al carrito y envíalos a cocina o cóbralos.` 
+        })
+    }
+}
+
+const agregarPlatoAlCarrito = (plato) => {
+    const platoDesc = plato.nombre
+    const existente = carrito.value.find(i => i.es_restaurante && i.item_ref === String(plato.id))
+    if (existente) {
+        existente.quantity++
+    } else {
+        const ivaVal = String(parametrosStore.obtener('ventas', 'iva', '15'))
+        carrito.value.push({
+            product_id: 0,
+            item_ref: String(plato.id),
+            code: 'PLATO-' + plato.id,
+            description: plato.nombre,
+            quantity: 1,
+            unit_price: parseFloat(plato.precio || 0),
+            discount: 0,
+            tarifa_iva: ivaVal,
+            es_restaurante: true,
+            notas: ''
+        })
+    }
+    showAlert({ type: 'success', title: 'Agregado', message: `${plato.nombre} agregado al pedido.` })
+}
+
+const enviarComandaDesdePOS = async () => {
+    if (!mesaSeleccionada.value) return
+    if (carrito.value.length === 0) {
+        showAlert({ type: 'warning', title: 'Atención', message: 'El carrito está vacío. Agrega productos o platos para enviar a cocina.' })
+        return
+    }
+    
+    // Si ya existe comanda, solo enviar las nuevas líneas que aún no tengan linea_id
+    let lineasAEnviar = carrito.value
+    if (pedidoMesaId.value) {
+        lineasAEnviar = carrito.value.filter(item => !item.linea_id)
+        if (lineasAEnviar.length === 0) {
+            showAlert({ type: 'info', title: 'Comanda al día', message: 'Todos los ítems de esta mesa ya fueron enviados a cocina.' })
+            return
+        }
+    }
+
+    enviandoComanda.value = true
+    try {
+        const payloadLineas = lineasAEnviar.map(item => ({
+            item_id: String(item.item_ref || item.product_id || ''),
+            item_nombre: item.description || item.name,
+            cantidad: parseInt(item.quantity) || 1,
+            precio_unitario: parseFloat(item.unit_price || item.price || 0),
+            notas: item.notas || ''
+        }))
+        const res = await api.post('restaurantes/pedidos/', {
+            mesa_id: mesaSeleccionada.value.id,
+            lineas: payloadLineas
+        })
+        showAlert({ type: 'success', title: 'Comanda Enviada', message: `Pedido de ${mesaSeleccionada.value.nombre} enviado a cocina exitosamente.` })
+        await cargarDatosRestaurante()
+        await cargarComandaMesa(mesaSeleccionada.value)
+    } catch (e) {
+        console.error('Error enviando comanda desde POS:', e)
+        showAlert({ type: 'error', title: 'Error', message: e.response?.data?.error || 'No se pudo enviar la comanda a cocina.' })
+    } finally {
+        enviandoComanda.value = false
+    }
+}
+
+const desvincularMesa = () => {
+    mesaSeleccionada.value = null
+    pedidoMesaId.value = null
+    showAlert({ type: 'info', title: 'Mesa desvinculada', message: 'Se ha desvinculado la mesa del carrito actual.' })
+}
+
 const showModernPaymentModal = ref(false)
 const openPaymentModal = () => {
     console.log('Ticket HTML generado, listo para imprimir')
@@ -1018,7 +1442,8 @@ const toggleQuickClient = () => {
     }
 }
 
-const printReceipt = async () => {
+const printReceipt = async (paperWidth = '80mm') => {
+    const width = typeof paperWidth === 'string' ? paperWidth : '80mm';
     try {
         if ('serial' in navigator) {
             const ports = await navigator.serial.getPorts();
@@ -1027,14 +1452,15 @@ const printReceipt = async () => {
                 await port.open({ baudRate: 9600 });
                 const writer = port.writable.getWriter();
                 const tenantName = tenantStore.currentTenant?.name || 'MI NEGOCIO';
-                const ticketNumber = ticketVenta.value?.invoice_number || 'N/A';
+                const ticketNumber = ticketVenta.value?.invoice_number || ticketVenta.value?.id || 'N/A';
+                const sep = width === '58mm' ? '--------------------------------' : '------------------------------------------------';
                 const text = `
---------------------------------
+${sep}
 ${tenantName}
---------------------------------
+${sep}
 Ticket: ${ticketNumber}
 Total: $${ticketVenta.value?.total || '0.00'}
---------------------------------
+${sep}
 Gracias por su compra
 \n\n\n\n`;
                 const encoder = new TextEncoder();
@@ -1048,35 +1474,6 @@ Gracias por su compra
     } catch (e) {
         console.warn("Fallo impresión Serial:", e);
     }
-
-    const ticketDiv = document.getElementById('printable-ticket');
-    if (!ticketDiv) return window.print();
-
-    const content = ticketDiv.outerHTML;
-    const iframe = document.createElement('iframe');
-    iframe.style.position = 'fixed';
-    iframe.style.right = '0';
-    iframe.style.bottom = '0';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
-    iframe.style.border = 'none';
-    document.body.appendChild(iframe);
-    
-    const doc = iframe.contentWindow.document;
-    doc.open();
-    doc.write('<html><head><title>Ticket</title>');
-    doc.write('<script src="https://cdn.tailwindcss.com"><\\/script>');
-    doc.write('<style>@media print { body { margin:0; padding:10px; width:80mm !important; font-family:monospace; } }</style>');
-    doc.write('</head><body>');
-    doc.write(content);
-    doc.write('</body></html>');
-    doc.close();
-    
-    setTimeout(() => {
-        iframe.contentWindow.focus();
-        iframe.contentWindow.print();
-        setTimeout(() => { document.body.removeChild(iframe); }, 1000);
-    }, 1000);
 }
 
 const procesarCobroWrapper = async () => {
@@ -1099,14 +1496,25 @@ const procesarCobroWrapper = async () => {
    
    if (success) {
        showModernPaymentModal.value = false
-       lastSaleData.value = {
+       const saleInfo = {
            id: ticketVenta.value?.id || Date.now().toString().slice(-6),
-           items: cartBackup,
+           invoice_number: ticketVenta.value?.invoice_number || ticketVenta.value?.factura_numero || null,
+           access_key: ticketVenta.value?.access_key || null,
+           document_type: docType,
+           items: cartBackup.map(i => ({
+             description: i.description,
+             quantity: i.quantity,
+             unit_price: i.unit_price || i.price,
+             total: i.subtotal || subtotalItem(i)
+           })),
            total: saleTotal,
            tax: saleTax,
            subtotal: saleSubtotal,
+           cambio: cambio.value || '0.00',
            client: clientBackup
        }
+       lastSaleData.value = saleInfo
+       ticketVenta.value = saleInfo
        showReceiptModal.value = true
    }
 }
@@ -1231,6 +1639,8 @@ function limpiarDespuesDeVenta() {
   productosEnEspera.value = []
   establecerConsumidorFinalModal()
   ordenPendienteId.value = null
+  mesaSeleccionada.value = null
+  pedidoMesaId.value = null
 }
 
 const sugerenciasProducto = ref([])
@@ -1421,7 +1831,8 @@ const cargarMetodosPago = async () => {
       metodosList.value = data.filter(m => m.active !== false).map(m => ({
         name: m.id, // using ID as the value for the backend
         label: m.name,
-        requires_reference: m.requires_reference
+        requires_reference: m.requires_reference,
+        sri_code: m.sri_code
       }))
       if (!metodoPago.value) {
         metodoPago.value = metodosList.value[0].name
@@ -1755,11 +2166,13 @@ async function cobrar() {
       ? (parseFloat(montoRecibido.value) || parseFloat(total.value))
       : parseFloat(total.value)
       
-    let paymentForm = '01'
-    const mName = (metodoActual.value && metodoActual.value.label) ? metodoActual.value.label.toLowerCase() : ''
-    if (mName.includes('tarjeta') && mName.includes('credito')) paymentForm = '19'
-    else if (mName.includes('tarjeta') && mName.includes('debito')) paymentForm = '16'
-    else if (mName.includes('transferencia')) paymentForm = '20'
+    let paymentForm = metodoActual.value?.sri_code || '01'
+    if (!metodoActual.value?.sri_code) {
+      const mName = (metodoActual.value && metodoActual.value.label) ? metodoActual.value.label.toLowerCase() : ''
+      if (mName.includes('tarjeta') && mName.includes('credito')) paymentForm = '19'
+      else if (mName.includes('tarjeta') && mName.includes('debito')) paymentForm = '16'
+      else if (mName.includes('transferencia')) paymentForm = '20'
+    }
 
     const vDescGlobal = valorDescuentoGlobal.value;
     const vSubtotalBruto = parseFloat(subtotalBruto.value) || 1;
@@ -1806,18 +2219,63 @@ async function cobrar() {
       id: data.id,
       total: data.total,
       cambio: data.change,
+      invoice_number: data.invoice_number || null,
       factura_numero: data.invoice_number || null,
+      access_key: data.access_key || null,
+      document_type: tipoDocumento.value,
       items: carrito.value.map(i => ({
         description: i.description,
         quantity: i.quantity,
+        unit_price: i.unit_price || i.price,
         subtotal: subtotalItem(i),
       })),
     }
+
+    // Si la venta proviene de una mesa de restaurante, cerrar y liberar comanda
+    if (mesaSeleccionada.value) {
+      if (!pedidoMesaId.value && carrito.value.length > 0) {
+        try {
+          const lineas = carrito.value.map(i => ({
+            item_id: String(i.item_ref || i.product_id || ''),
+            item_nombre: i.description || i.name,
+            cantidad: parseInt(i.quantity) || 1,
+            precio_unitario: parseFloat(i.unit_price || i.price || 0),
+            notas: i.notas || ''
+          }))
+          const resPed = await api.post('restaurantes/pedidos/', {
+            mesa_id: mesaSeleccionada.value.id,
+            lineas: lineas
+          })
+          pedidoMesaId.value = resPed.data?.id
+        } catch (e) {
+          console.error('Error auto-registrando pedido antes de cobrar:', e)
+        }
+      }
+      if (pedidoMesaId.value) {
+        try {
+          await api.post(`/restaurantes/pedidos/${pedidoMesaId.value}/cerrar/`, {
+            facturar: false,
+            factura_id: data.id,
+            factura_numero: data.invoice_number || null,
+            clave_acceso: data.access_key || null,
+            cliente_nombre: clienteForm.value.name,
+            cliente_identificacion: clienteForm.value.identification,
+            metodo_pago: metodoPago.value === 'efectivo' ? '01' : (metodoPago.value === 'tarjeta' ? '19' : '20')
+          })
+          showAlert({ type: 'success', title: 'Mesa Liberada', message: `Mesa ${mesaSeleccionada.value.nombre} cobrada y liberada.` })
+        } catch (errRest) {
+          console.error('Error cerrando mesa:', errRest)
+        }
+      }
+      await cargarDatosRestaurante()
+      mesaSeleccionada.value = null
+      pedidoMesaId.value = null
+    }
+
     carrito.value = []
     productosEnEspera.value = []
     nroComprobante.value = ''
     montoRecibido.value = 0
-    requiereFactura.value = false
     requiereFactura.value = false
     clienteForm.value = { name: 'CONSUMIDOR FINAL', identification: '9999999999999', tipo_id: '07', email: '' }
     busquedaCliente.value = ''
@@ -1869,6 +2327,48 @@ async function procesarVentaFactura(modalPayload) {
         }
       }),
     }
+
+    // Si la venta proviene de una mesa de restaurante, cerrar y liberar comanda
+    if (mesaSeleccionada.value) {
+      if (!pedidoMesaId.value && carrito.value.length > 0) {
+        try {
+          const lineas = carrito.value.map(i => ({
+            item_id: String(i.item_ref || i.product_id || ''),
+            item_nombre: i.description || i.name,
+            cantidad: parseInt(i.quantity) || 1,
+            precio_unitario: parseFloat(i.unit_price || i.price || 0),
+            notas: i.notas || ''
+          }))
+          const resPed = await api.post('restaurantes/pedidos/', {
+            mesa_id: mesaSeleccionada.value.id,
+            lineas: lineas
+          })
+          pedidoMesaId.value = resPed.data?.id
+        } catch (e) {
+          console.error('Error auto-registrando pedido antes de cobrar:', e)
+        }
+      }
+      if (pedidoMesaId.value) {
+        try {
+          await api.post(`/restaurantes/pedidos/${pedidoMesaId.value}/cerrar/`, {
+            facturar: false,
+            factura_id: data.id,
+            factura_numero: data.invoice_number || null,
+            clave_acceso: data.access_key || null,
+            cliente_nombre: clienteForm.value.name,
+            cliente_identificacion: clienteForm.value.identification,
+            metodo_pago: metodoPago.value === 'efectivo' ? '01' : (metodoPago.value === 'tarjeta' ? '19' : '20')
+          })
+          showAlert({ type: 'success', title: 'Mesa Liberada', message: `Mesa ${mesaSeleccionada.value.nombre} cobrada y liberada.` })
+        } catch (errRest) {
+          console.error('Error cerrando mesa:', errRest)
+        }
+      }
+      await cargarDatosRestaurante()
+      mesaSeleccionada.value = null
+      pedidoMesaId.value = null
+    }
+
     carrito.value = []
     productosEnEspera.value = []
     nroComprobante.value = ''
@@ -1947,7 +2447,9 @@ onMounted(async () => {
     employees.value = empData
   } catch {}
 
-  
+  if (tenantStore.tieneModulo('restaurantes')) {
+    cargarDatosRestaurante()
+  }
 
   cargandoPOS.value = false
 })
@@ -1992,17 +2494,30 @@ const traducirMetodoPago = (metodo) => {
 }
 
 const imprimirTicketPasado = (venta) => {
-  ticketVenta.value = {
+  const saleInfo = {
     id: venta.id,
+    invoice_number: venta.invoice_number || null,
+    access_key: venta.access_key || null,
     total: venta.total,
+    subtotal: venta.subtotal || venta.total,
+    tax: venta.tax || '0.00',
     cambio: venta.change || '0.00',
-    factura_numero: venta.invoice_number || null,
-    items: venta.items.map(i => ({
+    created_at: venta.created_at,
+    payment_method: venta.payment_method,
+    client: {
+      name: venta.customer_name || 'CONSUMIDOR FINAL',
+      identification: venta.customer_identifier || '9999999999999',
+      address: venta.customer_address || ''
+    },
+    items: (venta.items || []).map(i => ({
       description: i.description,
       quantity: i.quantity,
-      subtotal: i.subtotal,
+      unit_price: i.unit_price,
+      total: i.subtotal || (parseFloat(i.quantity) * parseFloat(i.unit_price || 0)).toFixed(2),
     }))
   };
+  ticketVenta.value = saleInfo;
+  lastSaleData.value = saleInfo;
   mostrarHistorialModal.value = false;
   showReceiptModal.value = true;
 }

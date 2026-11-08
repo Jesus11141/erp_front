@@ -18,6 +18,13 @@
       <div class="error-icon">🏢</div>
       <h2>Empresa no encontrada</h2>
       <p>Verifica que la URL sea correcta o contacta a soporte.</p>
+      <button 
+        @click="reintentarCarga" 
+        class="btn-reintentar"
+        style="margin-top: 1.25rem; padding: 0.6rem 1.5rem; background: #2563eb; color: white; border-radius: 0.5rem; font-weight: 600; cursor: pointer; border: none; box-shadow: 0 4px 6px -1px rgba(37,99,235,0.3); transition: all 0.2s;"
+      >
+        🔄 Reintentar conexión
+      </button>
     </div>
   </div>
 
@@ -122,23 +129,61 @@
                 <span class="nav-icon">↩️</span>
                 <span class="nav-label">Notas de Crédito</span>
               </router-link>
+              <router-link v-if="authStore.tienePermiso('facturacion.retenciones') || authStore.tienePermiso('facturacion.*')" to="/facturacion/retenciones" class="nav-item">
+                <span class="nav-icon">📑</span>
+                <span class="nav-label">Retenciones</span>
+              </router-link>
+              <router-link v-if="authStore.tienePermiso('facturacion.guias') || authStore.tienePermiso('facturacion.*')" to="/facturacion/guias-remision" class="nav-item">
+                <span class="nav-icon">🚚</span>
+                <span class="nav-label">Guías de Remisión</span>
+              </router-link>
+              <router-link v-if="authStore.tienePermiso('facturacion.liquidaciones') || authStore.tienePermiso('facturacion.*')" to="/facturacion/liquidaciones-compra" class="nav-item">
+                <span class="nav-icon">📋</span>
+                <span class="nav-label">Liquidaciones Compra</span>
+              </router-link>
             </div>
           </template>
 
           <!-- FISCAL / SRI -->
-          <template v-if="tenantStore.tieneModulo('accounting') && authStore.tieneAlgunPermiso('accounting')">
+          <template v-if="(tenantStore.tieneModulo('accounting') || tenantStore.tieneModulo('sri_facturas') || tenantStore.tieneModulo('sri_perfil')) && (authStore.tieneAlgunPermiso('accounting') || authStore.esSuperAdmin || authStore.rol === 'superadmin' || authStore.rol === 'admin')">
             <button @click="collapsedSections.accounting = !collapsedSections.accounting" class="nav-section-label w-full text-left flex justify-between items-center cursor-pointer hover:text-white transition-colors bg-transparent border-none">
               <span>Fiscal / SRI</span>
               <i class="fa-solid fa-chevron-down text-[10px] transition-transform duration-200 opacity-60" :class="{'rotate-180': collapsedSections.accounting, 'hidden': isSidebarCollapsed}"></i>
             </button>
             <div v-if="!collapsedSections.accounting">
-              <router-link v-if="authStore.tienePermiso('accounting.inbox') || authStore.tienePermiso('accounting.*')" to="/sri/inbox" class="nav-item">
+              <router-link v-if="authStore.tienePermiso('accounting.inbox') || authStore.tienePermiso('accounting.*') || authStore.esSuperAdmin || authStore.rol === 'superadmin' || authStore.rol === 'admin'" to="/sri/inbox" class="nav-item">
                 <span class="nav-icon">📥</span>
                 <span class="nav-label">Bandeja SRI</span>
               </router-link>
-              <router-link v-if="authStore.tienePermiso('accounting.taxforms') || authStore.tienePermiso('accounting.*')" to="/sri/tax-forms" class="nav-item">
+              <router-link v-if="authStore.tienePermiso('accounting.taxforms') || authStore.tienePermiso('accounting.*') || authStore.esSuperAdmin || authStore.rol === 'superadmin' || authStore.rol === 'admin'" to="/sri/tax-forms" class="nav-item">
                 <span class="nav-icon">📊</span>
                 <span class="nav-label">Declaraciones</span>
+              </router-link>
+            </div>
+          </template>
+
+          <!-- COMPRAS -->
+          <template v-if="tenantStore.tieneModulo('compras') && (authStore.tieneAlgunPermiso('compras') || authStore.tienePermiso('admin.*') || authStore.rol === 'admin')">
+            <button @click="collapsedSections.compras = !collapsedSections.compras" class="nav-section-label w-full text-left flex justify-between items-center cursor-pointer hover:text-white transition-colors bg-transparent border-none">
+              <span>Compras</span>
+              <i class="fa-solid fa-chevron-down text-[10px] transition-transform duration-200 opacity-60" :class="{'rotate-180': collapsedSections.compras, 'hidden': isSidebarCollapsed}"></i>
+            </button>
+            <div v-if="!collapsedSections.compras">
+              <router-link v-if="authStore.tienePermiso('compras.proveedores') || authStore.tienePermiso('compras.*') || authStore.tienePermiso('admin.*') || authStore.rol === 'admin'" to="/compras/proveedores" class="nav-item">
+                <span class="nav-icon">🚚</span>
+                <span class="nav-label">Proveedores</span>
+              </router-link>
+              <router-link v-if="authStore.tienePermiso('compras.ordenes') || authStore.tienePermiso('compras.*') || authStore.tienePermiso('admin.*') || authStore.rol === 'admin'" to="/compras/ordenes" class="nav-item">
+                <span class="nav-icon">📋</span>
+                <span class="nav-label">Órdenes de Compra</span>
+              </router-link>
+              <router-link v-if="authStore.tienePermiso('compras.facturas') || authStore.tienePermiso('compras.*') || authStore.tienePermiso('admin.*') || authStore.rol === 'admin'" to="/compras/facturas" class="nav-item">
+                <span class="nav-icon">🧾</span>
+                <span class="nav-label">Facturas de Compra</span>
+              </router-link>
+              <router-link v-if="authStore.tienePermiso('compras.cuentas_pagar') || authStore.tienePermiso('compras.*') || authStore.tienePermiso('admin.*') || authStore.rol === 'admin'" to="/compras/cuentas-pagar" class="nav-item">
+                <span class="nav-icon">💳</span>
+                <span class="nav-label">Cuentas por Pagar</span>
               </router-link>
             </div>
           </template>
@@ -261,6 +306,22 @@
               <router-link v-if="tenantStore.tieneModulo('centros_costos') && authStore.tienePermiso('contabilidad.centros')" to="/contabilidad/centros-costos" class="nav-item">
                 <span class="nav-icon">🏢</span>
                 <span class="nav-label">Centros de Costos</span>
+              </router-link>
+              <router-link v-if="authStore.tienePermiso('contabilidad.bancos')" to="/contabilidad/bancos" class="nav-item">
+                <span class="nav-icon">🏦</span>
+                <span class="nav-label">Cuentas Bancarias</span>
+              </router-link>
+              <router-link v-if="authStore.tienePermiso('contabilidad.cash_management')" to="/contabilidad/cash-management" class="nav-item">
+                <span class="nav-icon">💸</span>
+                <span class="nav-label">Cash Management</span>
+              </router-link>
+              <router-link v-if="authStore.tienePermiso('contabilidad.conciliacion')" to="/contabilidad/conciliacion" class="nav-item">
+                <span class="nav-icon">📑</span>
+                <span class="nav-label">Conciliación Bancaria</span>
+              </router-link>
+              <router-link v-if="authStore.tienePermiso('contabilidad.periodos')" to="/contabilidad/periodos" class="nav-item">
+                <span class="nav-icon">🔒</span>
+                <span class="nav-label">Períodos Fiscales</span>
               </router-link>
             </div>
           </template>
@@ -397,6 +458,7 @@ const collapsedSections = reactive(JSON.parse(localStorage.getItem('collapsedSec
   ventas: true,
   facturacion: true,
   accounting: true,
+  compras: true,
   notas_venta: true,
   inventario: true,
   rrhh: true,
@@ -438,6 +500,12 @@ const iniciales = computed(() => {
   const name = authStore.usuario?.name || ''
   return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
 })
+
+function reintentarCarga() {
+  localStorage.removeItem('token')
+  localStorage.removeItem('usuario')
+  window.location.reload()
+}
 
 onMounted(async () => {
   await tenantStore.cargar()

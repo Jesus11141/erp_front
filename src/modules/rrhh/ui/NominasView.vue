@@ -6,7 +6,8 @@
         <h1 class="page-title" style="margin:0">Nóminas</h1>
         </div>
       </div>
-      <div style="display:flex; gap:0.5rem;">
+      <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+        <button class="btn btn-outline" style="border-color:#2980b9; color:#2980b9;" @click="abrirModalIESS">🏛️ Archivo Plano IESS</button>
         <button class="btn btn-outline" @click="abrirGeneradorMasivo">⚡ Generación Masiva</button>
         <button class="btn btn-primary" @click="abrirGenerador">+ Generar Individual</button>
       </div>
@@ -50,7 +51,10 @@
             </td>
             <td><strong>{{ parametrosStore.company.simbolo }}{{ parseFloat(n.net_salary).toFixed(2) }}</strong></td>
             <td><span :class="badgeEstado(n.status)">{{ n.status }}</span></td>
-            <td>
+            <td style="display:flex; gap:0.35rem; align-items:center;">
+              <button class="btn btn-sm btn-outline" style="padding:0.25rem 0.5rem; font-size:0.8rem; display:inline-flex; align-items:center; gap:0.25rem;" title="Descargar Rol de Pagos Individual PDF" @click="descargarRolPDF(n.id)">
+                📄 Rol
+              </button>
               <button v-if="n.status === 'draft' || n.status === 'borrador'" class="btn btn-success" style="padding:0.25rem 0.75rem; font-size:0.8rem" @click="aprobar(n.id)">Aprobar</button>
             </td>
           </tr>
@@ -143,12 +147,54 @@
         </div>
       </div>
     </div>
+
+    <!-- Modal para exportar archivo plano IESS -->
+    <div v-if="mostrarModalIESS" class="modal-overlay">
+      <div class="modal">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; padding-bottom:0.5rem; border-bottom:1px solid var(--border)">
+          <h3 style="margin:0; display:flex; align-items:center; gap:0.5rem;">
+            <span>🏛️</span> Exportar Archivo IESS
+          </h3>
+          <button class="btn btn-outline" style="border-radius:50px; padding:0.25rem 0.75rem;" @click="mostrarModalIESS = false">✕</button>
+        </div>
+        <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1rem;">
+          Genera el archivo plano oficial estructurado con 10 columnas estándar para el envío de novedades de aportes personales (9.45%) y patronales (12.15%) al portal del IESS.
+        </p>
+        <div style="display:grid; grid-template-columns:1fr; gap:0.75rem;">
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+            <div class="form-group">
+              <label>Período Desde *</label>
+              <input v-model="formIESS.period_start" type="date" class="input" />
+            </div>
+            <div class="form-group">
+              <label>Período Hasta *</label>
+              <input v-model="formIESS.period_end" type="date" class="input" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Formato de Exportación *</label>
+            <select v-model="formIESS.format" class="input">
+              <option value="txt">Archivo Plano Oficial IESS (.txt delimitado por punto y coma)</option>
+              <option value="csv">Hoja de Cálculo / Excel (.csv)</option>
+            </select>
+          </div>
+        </div>
+        <p v-if="errorIESS" style="color:#e74c3c; font-size:0.85rem; margin-top:0.5rem;">{{ errorIESS }}</p>
+        <div style="display:flex; gap:0.5rem; justify-content:flex-end; margin-top:1.5rem">
+          <button class="btn btn-outline" @click="mostrarModalIESS = false">Cancelar</button>
+          <button class="btn btn-primary" @click="descargarIESS" :disabled="descargandoIESS">
+            {{ descargandoIESS ? 'Generando...' : '📥 Descargar Archivo' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
 import api from '../../../shared/api'
+import { descargar, abrirPDF } from '../../../shared/descargas'
 import { useParametrosStore } from '../../../stores/parametros'
 
 const parametrosStore = useParametrosStore()
@@ -160,6 +206,9 @@ const mostrarFormMasivo = ref(false)
 const error = ref('')
 const errorMasivo = ref('')
 const guardandoMasivo = ref(false)
+const mostrarModalIESS = ref(false)
+const descargandoIESS = ref(false)
+const errorIESS = ref('')
 
 const form = ref({
   empleado_id: '',
@@ -174,6 +223,12 @@ const formMasivo = ref({
   period_end: '',
   position: '',
   department: ''
+})
+
+const formIESS = ref({
+  period_start: '',
+  period_end: '',
+  format: 'txt'
 })
 
 const badgeEstado = (e) => ({
@@ -265,6 +320,43 @@ async function aprobar(id) {
     await cargarNominas()
   } catch (e) {
     alert(e.response?.data?.error || 'Error al aprobar nómina')
+  }
+}
+
+function abrirModalIESS() {
+  errorIESS.value = ''
+  formIESS.value = {
+    period_start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
+    period_end: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0],
+    format: 'txt'
+  }
+  mostrarModalIESS.value = true
+}
+
+async function descargarIESS() {
+  errorIESS.value = ''
+  if (!formIESS.value.period_start || !formIESS.value.period_end) {
+    errorIESS.value = 'Período inicio y fin son obligatorios'
+    return
+  }
+  descargandoIESS.value = true
+  try {
+    const ext = formIESS.value.format === 'csv' ? 'csv' : 'txt'
+    const filename = `iess_${formIESS.value.period_start}_${formIESS.value.period_end}.${ext}`
+    await descargar(`/rrhh/payrolls/iess-file/?period_start=${formIESS.value.period_start}&period_end=${formIESS.value.period_end}&format=${formIESS.value.format}`, filename)
+    mostrarModalIESS.value = false
+  } catch (e) {
+    errorIESS.value = e.response?.data?.error || 'Error al generar o descargar archivo plano IESS'
+  } finally {
+    descargandoIESS.value = false
+  }
+}
+
+async function descargarRolPDF(payrollId) {
+  try {
+    await abrirPDF(`/rrhh/payrolls/${payrollId}/pdf/`)
+  } catch (e) {
+    alert(e.response?.data?.error || 'Error al generar PDF del rol de pagos')
   }
 }
 </script>

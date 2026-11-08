@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div>
     <div class="page-header">
       <div>
@@ -25,7 +25,10 @@
       </div>
 
       <!-- Parámetros del módulo is_active -->
-      <div v-if="moduloActivo !== 'perfil'" class="card" style="margin-top:1rem;">
+      <div v-if="moduloActivo === 'restaurantes'" class="card" style="margin-top:1rem; padding:1rem;">
+        <RestauranteConfig />
+      </div>
+      <div v-else-if="moduloActivo !== 'perfil'" class="card" style="margin-top:1rem;">
         <div class="params-grid">
           <div
             v-for="(info, clave) in parametrosModulo"
@@ -151,16 +154,18 @@
                   type="text"
                   class="input"
                   style="flex: 1;"
-                  placeholder="Agregar nuevo ítem..."
-                  @keydown.enter.prevent="agregarItemLista(clave, $event.target)"
+                  placeholder="Escribe y presiona Enter o '+ Agregar'..."
+                  v-model="nuevoItemLista[clave]"
+                  @keydown.enter.prevent="agregarItemLista(clave)"
                 />
                 <button 
                   type="button" 
                   class="btn btn-primary" 
-                  style="padding: 0 0.75rem; font-weight: bold; font-size: 1.25rem;"
-                  @click="agregarItemLista(clave, $event.target.previousElementSibling)"
+                  style="padding: 0 0.85rem; font-weight: 600; font-size: 0.85rem; display: flex; align-items: center; gap: 0.35rem;"
+                  @click="agregarItemLista(clave)"
                 >
-                  +
+                  <span style="font-size: 1.1rem; line-height: 1;">+</span>
+                  <span>Agregar</span>
                 </button>
               </div>
               <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; max-height: 150px; overflow-y: auto; padding: 0.5rem; background: #f8fafc; border-radius: 8px; border: 1px solid var(--border);">
@@ -172,11 +177,12 @@
                   <span>{{ item }}</span>
                   <span 
                     @click="removerItemLista(clave, info.value, idx)" 
-                    style="color: red; cursor: pointer; font-weight: bold; font-size: 1rem;"
+                    style="color: red; cursor: pointer; font-weight: bold; font-size: 1.1rem; line-height: 1;"
+                    title="Eliminar"
                   >×</span>
                 </div>
-                <div v-if="!info.value" style="color: var(--text-muted); font-size: 0.8rem;">
-                  No hay elementos.
+                <div v-if="!info.value || !obtenerItemsLista(info.value).length" style="color: var(--text-muted); font-size: 0.8rem; padding: 0.25rem;">
+                  No hay elementos configurados.
                 </div>
               </div>
             </div>
@@ -226,6 +232,16 @@
 
         <div style="display:flex; justify-content:flex-end; margin-top:1.5rem; gap:0.75rem; align-items:center;">
           <span v-if="guardado" style="color:#27ae60; font-size:0.875rem;">✓ Guardado</span>
+          <button
+            v-if="moduloActivo === 'correo'"
+            type="button"
+            class="btn"
+            style="background:#0284c7; color:white; display:flex; align-items:center; gap:0.4rem;"
+            :disabled="probandoSMTP"
+            @click="abrirTestSMTP"
+          >
+            <span>{{ probandoSMTP ? '⏳ Probando conexión...' : '🧪 Probar Conexión SMTP' }}</span>
+          </button>
           <button class="btn btn-outline" @click="restaurarDefaults">Restaurar defaults</button>
           <button class="btn btn-primary" @click="guardar" :disabled="guardando">
             {{ guardando ? 'Guardando...' : 'Guardar cambios' }}
@@ -233,8 +249,58 @@
         </div>
       </div>
 
+      <!-- Modal Probar Conexión SMTP -->
+      <div v-if="mostrarModalTestSMTP" class="modal-overlay" @mousedown.self="mostrarModalTestSMTP = false">
+        <div class="modal" style="position:relative; max-width:480px;">
+          <button class="btn" style="position:absolute; top:1rem; right:1rem; background:transparent; border:none; font-size:1.25rem; cursor:pointer; color:var(--text-muted); padding:0;" @click="mostrarModalTestSMTP = false" title="Cerrar">✕</button>
+          <h3 style="margin-bottom:0.75rem; display:flex; align-items:center; gap:0.5rem;">
+            <span>📧</span> Probar Servidor de Correo SMTP
+          </h3>
+          <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1rem;">
+            Se enviará un correo de prueba utilizando la configuración SMTP actual para verificar la conectividad y credenciales.
+          </p>
+
+          <div class="form-group" style="margin-bottom:1rem;">
+            <label style="font-weight:600; display:block; margin-bottom:0.35rem; font-size:0.85rem;">Enviar correo de prueba a:</label>
+            <input
+              v-model="testEmailDestino"
+              type="email"
+              class="input"
+              placeholder="ejemplo@correo.com"
+              required
+            />
+          </div>
+
+          <div v-if="resultadoTestSMTP" :style="{
+            padding: '0.75rem 1rem',
+            borderRadius: '6px',
+            fontSize: '0.85rem',
+            marginBottom: '1rem',
+            background: resultadoTestSMTP.success ? '#f0fdf4' : '#fef2f2',
+            border: `1px solid ${resultadoTestSMTP.success ? '#86efac' : '#fca5a5'}`,
+            color: resultadoTestSMTP.success ? '#166534' : '#991b1b'
+          }">
+            <div style="font-weight:600; margin-bottom:0.25rem;">
+              {{ resultadoTestSMTP.success ? '✓ Conexión Exitosa' : '✗ Falló la conexión' }}
+            </div>
+            <div>{{ resultadoTestSMTP.message }}</div>
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1rem;">
+            <button class="btn btn-outline" @click="mostrarModalTestSMTP = false">Cerrar</button>
+            <button
+              class="btn btn-primary"
+              :disabled="probandoSMTP || !testEmailDestino"
+              @click="ejecutarTestSMTP"
+            >
+              {{ probandoSMTP ? 'Probando...' : 'Enviar Prueba' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- Perfil del usuario is_active -->
-      <div v-else class="card" style="margin-top:1rem; max-width:500px;">
+      <div v-if="moduloActivo === 'perfil'" class="card" style="margin-top:1rem; max-width:500px;">
         <h3 style="margin-bottom:1.5rem;">👤 Mi Cuenta de Usuario / Perfil</h3>
         
         <div class="form-group" style="margin-bottom: 1rem;">
@@ -265,6 +331,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import api from '../../../shared/api'
+import RestauranteConfig from './RestauranteConfig.vue'
 import { useAuthStore } from '../../../stores/auth'
 import { useTenantStore } from '../../../stores/tenant'
 import { useParametrosStore } from '../../../stores/parametros'
@@ -294,16 +361,28 @@ const firmaOk = ref(false)
 const guardandoPerfil = ref(false)
 const formPerfil = ref({ name: '', email: '', password: '' })
 
+// SMTP Test
+const probandoSMTP = ref(false)
+const mostrarModalTestSMTP = ref(false)
+const testEmailDestino = ref('')
+const resultadoTestSMTP = ref(null)
+
 const modulosDisponibles = computed(() => {
   const lista = [
     { clave: 'general',     label: 'General',      icono: '⚙️' },
     { clave: 'perfil',      label: 'Mi Perfil / Contraseña', icono: '👤' },
   ]
   if (tenantStore.tieneModulo('ventas')) lista.push({ clave: 'ventas', label: 'Ventas', icono: '🤝' })
-  if (tenantStore.tieneModulo('facturacion')) lista.push({ clave: 'facturacion', label: 'Facturación', icono: '🧾' })
+  if (tenantStore.tieneModulo('facturacion')) {
+    lista.push({ clave: 'facturacion', label: 'Facturación', icono: '🧾' })
+    lista.push({ clave: 'correo', label: 'Correo (SMTP)', icono: '📧' })
+  } else {
+    lista.push({ clave: 'correo', label: 'Correo (SMTP)', icono: '📧' })
+  }
   if (tenantStore.tieneModulo('pos')) lista.push({ clave: 'pos', label: 'POS', icono: '🖥️' })
   if (tenantStore.tieneModulo('inventario')) lista.push({ clave: 'inventario', label: 'Inventario', icono: '🏭' })
   if (tenantStore.tieneModulo('rrhh')) lista.push({ clave: 'rrhh', label: 'RRHH', icono: '👥' })
+  if (tenantStore.tieneModulo('restaurantes')) lista.push({ clave: 'restaurantes', label: 'Restaurantes', icono: '🍔' })
   if (tenantStore.tieneModulo('contabilidad')) lista.push({ clave: 'contabilidad', label: 'Contabilidad', icono: '📒' })
   if (tenantStore.tieneModulo('clinica')) lista.push({ clave: 'clinica', label: 'Clínica', icono: '🏥' })
   if (tenantStore.tieneModulo('technical_service')) lista.push({ clave: 'technical_service', label: 'Servicio Técnico', icono: '🔧' })
@@ -407,22 +486,72 @@ async function validarFirma(password) {
   }
 }
 
-function cambiarValor(clave, valor) {
-  if (!cambios.value[moduloActivo.value]) {
-    cambios.value[moduloActivo.value] = {}
+function abrirTestSMTP() {
+  const correoParams = parametrosModulo.value
+  const userEmail = correoParams.smtp_user?.value || authStore.user?.email || ''
+  testEmailDestino.value = userEmail
+  resultadoTestSMTP.value = null
+  mostrarModalTestSMTP.value = true
+}
+
+async function ejecutarTestSMTP() {
+  if (!testEmailDestino.value) {
+    showAlert({ type: 'warning', title: 'Destinatario requerido', message: 'Ingresa un correo electrónico de destino para la prueba.' })
+    return
   }
-  cambios.value[moduloActivo.value][clave] = valor
+  probandoSMTP.value = true
+  resultadoTestSMTP.value = null
+  try {
+    const correoParams = parametrosModulo.value
+    const payload = {
+      host: correoParams.smtp_host?.value || '',
+      port: correoParams.smtp_port?.value || '587',
+      user: correoParams.smtp_user?.value || '',
+      password: correoParams.smtp_password?.value || '',
+      use_tls: correoParams.smtp_use_tls?.value === 'true' || correoParams.smtp_use_tls?.value === true,
+      use_ssl: correoParams.smtp_use_ssl?.value === 'true' || correoParams.smtp_use_ssl?.value === true,
+      to_email: testEmailDestino.value
+    }
+    const { data } = await api.post('/facturacion/test-smtp/', payload)
+    resultadoTestSMTP.value = {
+      success: true,
+      message: data.message || 'Conexión SMTP exitosa y correo de prueba enviado.'
+    }
+    showAlert({ type: 'success', title: 'SMTP Conectado', message: resultadoTestSMTP.value.message })
+  } catch (e) {
+    const errorMsg = e.response?.data?.error || e.message || 'Error al conectar con el servidor SMTP'
+    resultadoTestSMTP.value = {
+      success: false,
+      message: errorMsg
+    }
+  } finally {
+    probandoSMTP.value = false
+  }
+}
+
+function cambiarValor(clave, valor) {
+  const mod = moduloActivo.value
+  const actuales = cambios.value[mod] || {}
+  cambios.value = {
+    ...cambios.value,
+    [mod]: {
+      ...actuales,
+      [clave]: valor
+    }
+  }
   guardado.value = false
 }
+
+const nuevoItemLista = ref({})
 
 const obtenerItemsLista = (valor) => {
   if (!valor) return []
   return valor.split(',').map(s => s.trim()).filter(s => s)
 }
 
-const agregarItemLista = (clave, inputElement) => {
-  if (!inputElement || !inputElement.value.trim()) return
-  const item = inputElement.value.trim()
+const agregarItemLista = (clave) => {
+  const item = (nuevoItemLista.value[clave] || '').trim()
+  if (!item) return
   const currentVal = cambios.value[moduloActivo.value]?.[clave] !== undefined 
       ? cambios.value[moduloActivo.value][clave] 
       : parametros.value[moduloActivo.value]?.[clave]?.value
@@ -432,11 +561,14 @@ const agregarItemLista = (clave, inputElement) => {
     list.push(item)
     cambiarValor(clave, list.join(', '))
   }
-  inputElement.value = ''
+  nuevoItemLista.value[clave] = ''
 }
 
 const removerItemLista = (clave, valorActual, idx) => {
-  const list = obtenerItemsLista(valorActual)
+  const currentVal = cambios.value[moduloActivo.value]?.[clave] !== undefined 
+      ? cambios.value[moduloActivo.value][clave] 
+      : valorActual
+  const list = obtenerItemsLista(currentVal)
   list.splice(idx, 1)
   cambiarValor(clave, list.join(', '))
 }
@@ -460,15 +592,33 @@ async function guardar() {
       await subirFirma()
     }
 
-    const payload = cambios.value[moduloActivo.value] || {}
-    await api.post(`/parametros/${moduloActivo.value}/`, payload)
-    // Actualizar valores locales
-    for (const [clave, valor] of Object.entries(payload)) {
-      if (parametros.value[moduloActivo.value]?.[clave]) {
-        parametros.value[moduloActivo.value][clave].value = valor
+    // Auto-agregar si el usuario escribió un ítem pero no hizo click en '+ Agregar'
+    for (const [clave, val] of Object.entries(nuevoItemLista.value)) {
+      if (val && val.trim()) {
+        agregarItemLista(clave)
       }
     }
-    cambios.value[moduloActivo.value] = {}
+
+    const payload = cambios.value[moduloActivo.value] || {}
+    await api.post(`/parametros/${moduloActivo.value}/`, payload)
+    
+    // Actualizar valores locales de inmediato con reactividad profunda
+    const mod = moduloActivo.value
+    const modParams = { ...(parametros.value[mod] || {}) }
+    for (const [clave, valor] of Object.entries(payload)) {
+      if (modParams[clave]) {
+        modParams[clave] = { ...modParams[clave], value: valor }
+      }
+    }
+    parametros.value = {
+      ...parametros.value,
+      [mod]: modParams
+    }
+    cambios.value = {
+      ...cambios.value,
+      [mod]: {}
+    }
+    await parametrosStore.cargar(true)
     guardado.value = true
     setTimeout(() => guardado.value = false, 3000)
   } catch (e) {

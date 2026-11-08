@@ -13,6 +13,7 @@
         <thead>
           <tr>
             <th>Nombre</th>
+            <th>Cédula / ID</th>
             <th>Puesto</th>
             <th>Departamento</th>
             <th>PIN Caja</th>
@@ -24,7 +25,8 @@
         </thead>
         <tbody>
           <tr v-for="e in employees" :key="e.id">
-            <td>{{ e.name }}</td>
+            <td><strong>{{ e.name }}</strong></td>
+            <td><span style="font-family:monospace; color:var(--text-muted); font-weight:600">{{ e.identification || e.cedula || '---' }}</span></td>
             <td>{{ e.position }}</td>
             <td>{{ e.department }}</td>
             <td><strong style="font-family:monospace; color:var(--color-primario)">{{ e.pin_caja ? '••••' : 'Sin PIN' }}</strong></td>
@@ -42,7 +44,7 @@
             </td>
           </tr>
           <tr v-if="!employees.length">
-            <td colspan="8" style="text-align:center; color:var(--text-muted)">Sin employees</td>
+            <td colspan="9" style="text-align:center; color:var(--text-muted)">Sin employees</td>
           </tr>
         </tbody>
       </table>
@@ -56,7 +58,8 @@
           </h2>
         </div>
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
-          <div class="form-group"><label>Nombre *</label><input v-model="form.name" class="input" /></div>
+          <div class="form-group"><label>Nombre Completo *</label><input v-model="form.name" class="input" placeholder="Ej: Juan Pérez" /></div>
+          <div class="form-group"><label>Cédula / Identificación *</label><input v-model="form.identification" class="input" placeholder="10 dígitos (IESS)" /></div>
           <div class="form-group"><label>Email</label><input v-model="form.email" type="email" class="input" /></div>
           <div class="form-group">
             <label>Puesto *</label>
@@ -76,6 +79,14 @@
             </select>
           </div>
           <div class="form-group"><label>🔑 PIN / Clave de Caja (ej: 1234)</label><input v-model="form.pin_caja" type="password" class="input" placeholder="Clave personal POS" /></div>
+          <div class="form-group"><label>🏦 Banco Acreditación</label><input v-model="form.bank_name" class="input" placeholder="Ej: Pichincha, Guayaquil, Pacífico" /></div>
+          <div class="form-group"><label>Tipo de Cuenta</label>
+            <select v-model="form.bank_account_type" class="input">
+              <option value="ahorros">Ahorros</option>
+              <option value="corriente">Corriente</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Número de Cuenta</label><input v-model="form.bank_account_number" class="input" placeholder="Número de cuenta" /></div>
           
           <div style="grid-column:1/-1; margin-top:0.5rem; border-top:1px solid var(--border); padding-top:1rem;">
             <label class="checkbox-container" style="font-weight:600; color:var(--color-primario);">
@@ -334,7 +345,7 @@ const error = ref('')
 const dependientes = ref([])
 const historialSalarial = ref([])
 const prestamos = ref([])
-const form = ref({ id: null, name: '', email: '', position: '', department: 'General', salary: 0, hire_date: '', contract_type: 'tiempo_completo', pin_caja: '', has_iess: false, accumulates_13th: true, accumulates_14th: true, active_dependents_count: 0 })
+const form = ref({ id: null, name: '', identification: '', email: '', position: '', department: 'General', salary: 0, hire_date: '', contract_type: 'tiempo_completo', pin_caja: '', bank_name: '', bank_account_type: 'ahorros', bank_account_number: '', has_iess: false, accumulates_13th: true, accumulates_14th: true, active_dependents_count: 0 })
 const formPuesto = ref({ id: null, name: '', active: true })
 const formDep = ref({ id: null, full_name: '', identification: '', relationship: 'hijo', birth_date: '', has_disability: false, active: true })
 const formPrestamo = ref({ id: null, type: 'interno', total_amount: 0, monthly_installment: 0, start_date: '', active: true })
@@ -360,6 +371,7 @@ function abrirCrear() {
   form.value = {
     id: null,
     name: '',
+    identification: '',
     email: '',
     position: '',
     department: 'General',
@@ -367,6 +379,9 @@ function abrirCrear() {
     hire_date: '',
     contract_type: 'tiempo_completo',
     pin_caja: '',
+    bank_name: '',
+    bank_account_type: 'ahorros',
+    bank_account_number: '',
     has_iess: false,
     accumulates_13th: true,
     accumulates_14th: true,
@@ -381,6 +396,7 @@ function abrirEditar(e) {
   form.value = {
     id: e.id,
     name: e.name,
+    identification: e.identification || '',
     email: e.email || '',
     position: e.position,
     department: e.department || 'General',
@@ -388,6 +404,9 @@ function abrirEditar(e) {
     hire_date: e.hire_date ? e.hire_date.substring(0, 10) : '',
     contract_type: e.contract_type || 'tiempo_completo',
     pin_caja: e.pin_caja || '',
+    bank_name: e.bank_name || '',
+    bank_account_type: e.bank_account_type || 'ahorros',
+    bank_account_number: e.bank_account_number || '',
     has_iess: e.has_iess || false,
     accumulates_13th: e.accumulates_13th !== undefined ? e.accumulates_13th : true,
     accumulates_14th: e.accumulates_14th !== undefined ? e.accumulates_14th : true,

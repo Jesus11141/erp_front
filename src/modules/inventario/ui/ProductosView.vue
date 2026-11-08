@@ -1,8 +1,13 @@
 <template>
   <div>
-    <div class="page-header">
+    <div class="page-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">
       <h1 class="page-title" style="margin:0">Productos</h1>
-      <button class="btn btn-primary" @click="abrirNuevoProducto">+ Nuevo Producto</button>
+      <div style="display:flex; gap:0.5rem; align-items:center;">
+        <button class="btn btn-outline" style="border-color:#10b981; color:#059669; font-weight:600;" @click="mostrarModalImportar = true">
+          <i class="fa-solid fa-file-excel" style="margin-right:0.35rem; color:#10b981;"></i> Importar Excel
+        </button>
+        <button class="btn btn-primary" @click="abrirNuevoProducto">+ Nuevo Producto</button>
+      </div>
     </div>
 
     <!-- Filtros -->
@@ -295,6 +300,16 @@
         </div>
       </div>
     </div>
+    <!-- Modal de Importación Masiva Excel -->
+    <ExcelImportModal
+      :show="mostrarModalImportar"
+      entity="productos"
+      title="Importar Productos Masivamente"
+      description="Cargue su catálogo con stock inicial, precios de compra y venta desde un archivo Excel."
+      icon="fa-boxes-stacked"
+      @close="mostrarModalImportar = false"
+      @success="onImportacionExitosa"
+    />
   </div>
 </template>
 
@@ -304,8 +319,14 @@ import api from '../../../shared/api'
 import { useParametrosStore } from '../../../stores/parametros'
 import EmptyState from '@/components/EmptyState.vue'
 import TableSkeleton from '@/components/TableSkeleton.vue'
+import ExcelImportModal from '@/shared/components/ExcelImportModal.vue'
 
 const cargando = ref(true)
+const mostrarModalImportar = ref(false)
+
+const onImportacionExitosa = () => {
+  cargar()
+}
 const parametrosStore = useParametrosStore()
 const simbolo = computed(() => parametrosStore.company?.simbolo || '$')
 

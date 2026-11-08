@@ -12,10 +12,18 @@
       </div>
       <div class="flex items-center gap-2 flex-wrap">
         <button 
-          class="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl font-medium text-sm transition-all shadow-sm flex items-center gap-2"
+          class="px-4 py-2.5 bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 rounded-xl font-medium text-sm transition-all shadow-sm flex items-center gap-2"
+          @click="mostrarModalImportar = true"
+          title="Importar catálogo de cuentas desde Excel">
+          <i class="fa-solid fa-file-excel text-emerald-600"></i> Importar Excel
+        </button>
+        <button 
+          class="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl font-medium text-sm transition-all shadow-sm flex items-center gap-2 disabled:opacity-50"
           @click="descargarExcel"
-          title="Descargar en formato CSV/Excel">
-          <i class="fa-solid fa-file-excel text-emerald-600"></i> Descargar
+          :disabled="downloading"
+          title="Descargar en formato Excel (.xlsx)">
+          <i v-if="downloading" class="fa-solid fa-spinner fa-spin text-emerald-600"></i>
+          <i v-else class="fa-solid fa-file-excel text-emerald-600"></i> Descargar Excel
         </button>
         <button 
           class="px-4 py-2.5 bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 rounded-xl font-medium text-sm transition-all shadow-sm flex items-center gap-2" 
@@ -223,6 +231,17 @@
 
       </div>
     </div>
+
+    <!-- Modal Importación Masiva Excel -->
+    <ExcelImportModal
+      :show="mostrarModalImportar"
+      entity="plan-cuentas"
+      title="Importar Plan de Cuentas Masivamente"
+      description="Cargue su catálogo contable oficial desde Excel. El sistema enlazará automáticamente las cuentas padre e hijas."
+      icon="fa-sitemap"
+      @close="mostrarModalImportar = false"
+      @success="fetchCuentas"
+    />
   </div>
 </template>
 
@@ -231,14 +250,17 @@ import { ref, computed, onMounted } from 'vue'
 import api from '@/shared/api'
 import { useToast } from 'vue-toastification'
 import TableSkeleton from '@/components/TableSkeleton.vue'
+import ExcelImportModal from '@/shared/components/ExcelImportModal.vue'
 
 const toast = useToast()
 const cuentas = ref([])
 const loading = ref(true)
 const showModal = ref(false)
+const mostrarModalImportar = ref(false)
 const showConfirmModal = ref(false)
 const saving = ref(false)
 const seeding = ref(false)
+const downloading = ref(false)
 
 const form = ref({
   id: null,
@@ -280,24 +302,43 @@ const eliminarCuenta = async (cuenta) => {
   }
 }
 
-const descargarExcel = () => {
+const descargarExcel = async () => {
   if (cuentas.value.length === 0) {
     toast.info('No hay cuentas para descargar')
     return
   }
   
-  let csv = 'CÓDIGO,NOMBRE,TIPO\n'
-  cuentasOrdenadas.value.forEach(c => {
-    csv += `"${c.code}","${c.name}","${formatTipo(c.type)}"\n`
-  })
-  
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-  const link = document.createElement('a')
-  link.href = URL.createObjectURL(blob)
-  link.setAttribute('download', 'Plan_Cuentas.csv')
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
+  downloading.value = true
+  try {
+    const res = await api.get('/contabilidad/cuentas/export/excel/', { responseType: 'blob' })
+    const blob = new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.setAttribute('download', 'Plan_de_Cuentas.xlsx')
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(link.href)
+    toast.success('Plan de Cuentas descargado exitosamente en Excel')
+  } catch (err) {
+    console.error('Error generando Excel nativo, usando respaldo CSV:', err)
+    // Fallback: CSV con UTF-8 BOM (\ufeff) y formato de texto ="codigo" para preservar ceros
+    let csv = 'CÓDIGO,NOMBRE,TIPO\n'
+    cuentasOrdenadas.value.forEach(c => {
+      csv += `="${c.code}","${(c.name || '').replace(/"/g, '""')}","${formatTipo(c.type)}"\n`
+    })
+    
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.setAttribute('download', 'Plan_de_Cuentas.csv')
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(link.href)
+  } finally {
+    downloading.value = false
+  }
 }
 
 const confirmSeed = () => {

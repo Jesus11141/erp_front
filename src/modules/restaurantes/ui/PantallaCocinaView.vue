@@ -5,7 +5,7 @@
       <button @click="cargarComandas">🔄 Actualizar</button>
     </div>
 
-    <div class="comandas-grid">
+    <div class="comandas-grid" v-if="lineasPendientes.length > 0">
       <div 
         v-for="linea in lineasPendientes" 
         :key="linea.id"
@@ -27,18 +27,24 @@
         </div>
       </div>
     </div>
+
+    <div v-else class="empty-cocina">
+      <div class="empty-icon">🍳</div>
+      <h3>Cocina al día</h3>
+      <p>No hay comandas ni platos pendientes de preparación en este momento.</p>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import axios from 'axios';
+import api from '../../../shared/api';
 
 const lineasPendientes = ref([]);
 
 const cargarComandas = async () => {
   try {
-    const { data } = await axios.get('/api/restaurantes/cocina/');
+    const { data } = await api.get('restaurantes/cocina/');
     lineasPendientes.value = data;
   } catch (error) {
     console.error('Error cargando cocina', error);
@@ -47,7 +53,7 @@ const cargarComandas = async () => {
 
 const cambiarEstado = async (linea, nuevoEstado) => {
   try {
-    await axios.post(`/api/restaurantes/cocina/${linea.id}/`, { estado: nuevoEstado });
+    await api.post(`restaurantes/cocina/${linea.id}/`, { estado: nuevoEstado });
     cargarComandas();
   } catch (error) {
     console.error(error);
@@ -134,5 +140,19 @@ onMounted(() => {
 }
 .card-footer button.btn-entregar {
   background: #95a5a6;
+}
+.empty-cocina {
+  text-align: center;
+  margin-top: 5rem;
+  color: #bdc3c7;
+}
+.empty-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+.empty-cocina h3 {
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+  color: #ecf0f1;
 }
 </style>

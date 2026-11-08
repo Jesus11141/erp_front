@@ -7,6 +7,9 @@ const routes = [
   { path: '/dashboard',           component: () => import('../views/DashboardView.vue') },
   { path: '/facturacion',         component: () => import('../modules/facturacion/ui/FacturasView.vue') },
   { path: '/facturacion/notas-credito', component: () => import('../modules/facturacion/ui/NotasCreditoView.vue') },
+  { path: '/facturacion/retenciones',   component: () => import('../modules/facturacion/ui/RetencionesView.vue') },
+  { path: '/facturacion/guias-remision', component: () => import('../modules/facturacion/ui/GuiasRemisionView.vue') },
+  { path: '/facturacion/liquidaciones-compra', component: () => import('../modules/facturacion/ui/LiquidacionesCompraView.vue') },
   { path: '/ventas/customers',     component: () => import('../modules/ventas/ui/ClientesView.vue') },
   { path: '/ventas/quotations', component: () => import('../modules/ventas/ui/CotizacionesView.vue') },
   { path: '/ventas/orders',      component: () => import('../modules/ventas/ui/PedidosView.vue') },
@@ -14,6 +17,12 @@ const routes = [
   { path: '/ventas/payment-methods', component: () => import('../modules/ventas/ui/PaymentMethodsView.vue') },
   { path: '/ventas/receivables', component: () => import('../modules/ventas/ui/CuentasCobrarView.vue') },
   { path: '/inventory',          component: () => import('../modules/inventario/ui/ProductosView.vue') },
+
+  // COMPRAS
+  { path: '/compras/proveedores',   component: () => import('../modules/compras/ui/ProveedoresView.vue') },
+  { path: '/compras/ordenes',       component: () => import('../modules/compras/ui/OrdenesCompraView.vue') },
+  { path: '/compras/facturas',      component: () => import('../modules/compras/ui/FacturasCompraView.vue') },
+  { path: '/compras/cuentas-pagar', component: () => import('../modules/compras/ui/CuentasPagarView.vue') },
 
   { path: '/inventario/cotizador',component: () => import('../modules/inventario/ui/CotizadorView.vue') },
   { path: '/inventario/transferencias',component: () => import('../modules/inventario/ui/TransferenciasView.vue') },
@@ -36,6 +45,10 @@ const routes = [
   { path: '/contabilidad/estado-resultados', component: () => import('../modules/contabilidad/ui/EstadoResultadosView.vue') },
   { path: '/contabilidad/balance-general', component: () => import('../modules/contabilidad/ui/BalanceGeneralView.vue') },
   { path: '/contabilidad/centros-costos', component: () => import('../modules/contabilidad/ui/CentrosCostosView.vue') },
+  { path: '/contabilidad/bancos', component: () => import('../modules/contabilidad/ui/CuentasBancariasView.vue') },
+  { path: '/contabilidad/cash-management', component: () => import('../modules/contabilidad/ui/CashManagementView.vue') },
+  { path: '/contabilidad/conciliacion', component: () => import('../modules/contabilidad/ui/ConciliacionBancariaView.vue') },
+  { path: '/contabilidad/periodos', component: () => import('../modules/contabilidad/ui/PeriodosContablesView.vue') },
   { path: '/restaurante/mesas', component: () => import('../modules/restaurantes/ui/MapaMesasView.vue') },
   { path: '/restaurante/cocina', component: () => import('../modules/restaurantes/ui/PantallaCocinaView.vue') },
   { path: '/technical-service/orders', component: () => import('../modules/technical_service/ui/WorkOrdersView.vue') },

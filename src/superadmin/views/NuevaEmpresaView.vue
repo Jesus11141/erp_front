@@ -190,7 +190,9 @@ const categoriasModulos = [
     modulos: [
       { id: 'rrhh', name: '👥 Recursos Humanos' },
       { id: 'contabilidad', name: '📒 Contabilidad' },
+      { id: 'accounting', name: '🧾 Contabilidad SRI' },
       { id: 'centros_costos', name: '🏢 Centros de Costos' },
+      { id: 'reportes', name: '📈 Reportes Avanzados' },
     ]
   },
   {

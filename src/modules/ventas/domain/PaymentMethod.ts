@@ -3,4 +3,5 @@ export interface PaymentMethod {
     name: string;
     active: boolean;
     requires_reference: boolean;
+    sri_code?: string;
 }

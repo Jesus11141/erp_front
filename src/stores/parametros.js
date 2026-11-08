@@ -8,8 +8,8 @@ export const useParametrosStore = defineStore('parametros', () => {
 
   let cargarPromise = null
 
-  async function cargar() {
-    if (cargarPromise) return cargarPromise
+  async function cargar(force = false) {
+    if (cargarPromise && !force) return cargarPromise
     cargarPromise = (async () => {
       try {
         const { data } = await api.get('/parametros/')
